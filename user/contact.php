@@ -8,6 +8,7 @@ $success = '';
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
     $user_id = $_SESSION['user_id'];
     $message = trim($_POST['message']);
 
@@ -41,126 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>Contact Us - MediSync</title>
     <link href="../assets/css/style.css" rel="stylesheet">
-    <style>
-        body{
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: white;
-            box-sizing: border-box;
-            background-image: url('../assets/image/wave.png');
-            background-repeat: no-repeat;
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            justify-items: center;
-            margin-bottom: 10px;
-        }
-        .dashboard-container {
-            display: flex;
-            width: 100%;
-            height: 100vh;
-        }
-        .user-sidebar {
-            width: 15%;
-            height: 100%;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 10);
-            position: fixed;
-        }
-        .user-sidebar h2 {
-            color: white;
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-        .user-sidebar nav {
-            display: flex;
-            flex-direction: column;
-        }
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            padding: 10px 0;
-            margin-bottom: 10px;
-        }
-        .nav-link:hover, .nav-link.active {
-            background-color: white;
-            border-radius: 0 20px 20px 0px;
-            font-weight: bold;
-            color: black;
-            transition: 0.5s;
-        }
-        .nav-link.active {
-            font-weight: bold;
-        }
-        .user-main {
-            width: 80%;
-            height: 100%;
-            padding: 10px;
-            margin-left: 20%;
-        }
-        h1 {
-            margin-bottom: 2rem;
-        }
-        .contact-container {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 10);
-        }
-        .contact-container h1 {
-            margin-bottom: 1rem;
-        }
-        .alert {
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 5px;
-        }
-        .error {
-            background: #f44336;
-            color: white;
-        }
-        .success {
-            background: #4CAF50;
-            color: white;
-        }
-        .contact-info {
-            margin-bottom: 1rem;
-        }
-        .contact-info p {
-            margin-bottom: 0.5rem;
-        }
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        label {
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
-        textarea {
-            width: 80%;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            font-size: 1rem;
-        }
-        .btn {
-            padding: 10px 20px;
-            font-size: 1rem;
-            font-weight: bold;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .btn:hover {
-            background: #45a049;
-        }
-    </style>
 </head>
 <body>
     <div class="dashboard-container">
@@ -182,11 +63,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <h1>Contact Us</h1>
                 
                 <?php if ($error): ?>
-                    <div class="alert error"><?= $error ?></div>
+                    <div class="alert error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
                 <?php endif; ?>
                 
                 <?php if ($success): ?>
-                    <div class="alert success"><?= $success ?></div>
+                    <div class="alert success"><?= htmlspecialchars($success, ENT_QUOTES, 'UTF-8') ?></div>
                 <?php endif; ?>
 
                 <div class="contact-info">
@@ -198,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <form method="post">
+                    <?= csrf_field() ?>
                     <div class="form-group">
                         <label>Your Message:</label>
                         <textarea name="message" required><?= htmlspecialchars($message ?? '') ?></textarea>

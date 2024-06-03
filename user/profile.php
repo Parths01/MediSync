@@ -22,6 +22,7 @@ try {
 
 // Handle profile update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
+    verify_csrf_token();
     $name = trim($_POST['name']);
     $dob = $_POST['dob'];
     $gender = $_POST['gender'];
@@ -88,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 
 // Handle feedback submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
+    verify_csrf_token();
     $message = trim($_POST['message']);
 
     if (empty($message)) {
@@ -110,127 +112,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
     <meta charset="UTF-8">
     <title>My Profile - MediSync</title>
     <link href="../assets/css/style.css" rel="stylesheet">
-    <style>
-        body{
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: white;
-            box-sizing: border-box;
-            background-image: url('../assets/image/wave.png');
-            background-repeat: no-repeat;
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            justify-items: center;
-            margin-bottom: 10px;
-        }
-        .dashboard-container {
-            display: flex;
-            width: 100%;
-            height: 100vh;
-        }
-        .user-sidebar {
-            width: 15%;
-            height: 100%;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 10);
-            position: fixed;
-        }
-        .user-sidebar h2 {
-            color: white;
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-        .user-sidebar nav {
-            display: flex;
-            flex-direction: column;
-        }
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            padding: 10px 0;
-            margin-bottom: 10px;
-        }
-        .nav-link:hover, .nav-link.active {
-            background-color: white;
-            border-radius: 0 20px 20px 0px;
-            font-weight: bold;
-            color: black;
-            transition: 0.5s;
-        }
-        .nav-link.active {
-            font-weight: bold;
-        }
-        .user-main {
-            width: 80%;
-            height: 100%;
-            padding: 10px;
-            margin-left: 20%;
-        }
-        h1 {
-            margin-bottom: 2rem;
-        }
-        .alert {
-            background: #f44336;
-            color: white;
-            padding: 10px;
-            margin-bottom: 1rem;
-        }
-        .success {
-            background: #4CAF50;
-        }
-        .form-section {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 20px;
-            width: 90%;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        .form-group label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .form-group input, .form-group select {
-            width: 80%;
-            padding: 10px;
-            font-size: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        .form-row {
-            display: flex;
-            justify-content: space-between;
-        }
-        .btn {
-            padding: 10px 20px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1rem;
-        }
-        .btn:hover {
-            background: #45a049;
-        }
-        .feedback-section {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 20px;
-            border-radius: 10px;
-            width: 50%;
-        }
-        .profile-info {
-            margin-top: 2rem;
-        }
-    </style>
 </head>
 <body>
     <div class="dashboard-container">
@@ -250,10 +131,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
             <h1>My Profile</h1>
             
             <?php if ($error): ?>
-                <div class="alert error"><?= $error ?></div>
+                <div class="alert error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
             <?php if ($success): ?>
-                <div class="alert success"><?= $success ?></div>
+                <div class="alert success"><?= htmlspecialchars($success, ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
 
             <div class="profile-section">
@@ -261,6 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
                 <div class="form-section">
                     <h2>Edit Profile</h2>
                     <form method="post">
+                        <?= csrf_field() ?>
                         <div class="form-group">
                             <label>Full Name:</label>
                             <input type="text" name="name" required 
@@ -322,13 +204,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
                 <div class="feedback-section">
                     <h2>Send Feedback</h2>
                     <?php if ($feedback_error): ?>
-                        <div class="alert error"><?= $feedback_error ?></div>
+                        <div class="alert error"><?= htmlspecialchars($feedback_error, ENT_QUOTES, 'UTF-8') ?></div>
                     <?php endif; ?>
                     <?php if ($feedback_success): ?>
-                        <div class="alert success"><?= $feedback_success ?></div>
+                        <div class="alert success"><?= htmlspecialchars($feedback_success, ENT_QUOTES, 'UTF-8') ?></div>
                     <?php endif; ?>
                     
                     <form method="post">
+                        <?= csrf_field() ?>
                         <div class="form-group">
                             <label>Your Message:</label>
                             <textarea name="message" rows="5" required></textarea>

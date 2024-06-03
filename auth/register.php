@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/auth_guard.php';
 require_once '../includes/db_connection.php';
 
 // Redirect logged-in users
@@ -21,6 +21,7 @@ try {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
     // User Data
     $name = trim($_POST['name']);
     $dob = $_POST['dob'];
@@ -47,6 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($blood_group)) $errors[] = "Blood group is required";
     if (empty($doctor_id)) $errors[] = "Please select a doctor";
     if (empty($appointment_date)) $errors[] = "Appointment date is required";
+    $date = DateTime::createFromFormat('Y-m-d', $appointment_date);
+    if (!$date || $date->format('Y-m-d') !== $appointment_date || $date <= new DateTime('today')) {
+        $errors[] = "Appointment date must be a valid future date";
+    }
 
     if (empty($errors)) {
         try {
@@ -58,6 +63,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->fetch()) {
                 $errors[] = "Email already registered";
                 throw new Exception("Duplicate email");
+            }
+
+            $stmt = $pdo->prepare("SELECT doctor_id FROM doctors WHERE doctor_id = ?");
+            $stmt->execute([$doctor_id]);
+            if (!$stmt->fetch()) {
+                $errors[] = "Selected doctor was not found";
+                throw new Exception("Invalid doctor");
             }
 
             // Insert user
@@ -109,119 +121,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+<head>
     <meta charset="UTF-8">
     <title>MediSync - Register</title>
     <link href="../assets/css/style.css" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: white;
-            box-sizing: border-box;
-            background-image: url('../assets/image/wave.png');
-            background-repeat: no-repeat;
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            justify-items: center;
-        }
-        .navbar {
-            backdrop-filter: blur(40px);
-            border-radius: 10px;
-            margin-top: 2%;
-            padding: 1rem;
-            width: 95%;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 10);
-        }
-        
-        .navbar-brand {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: white;
-        }
-        /* Registration Page Styles */
-        .register-container {
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 2rem;
-            backdrop-filter: blur(40px);
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .register-container h2 {
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .form-row .form-group {
-            flex: 1;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 90%;
-            padding: 0.8rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 1rem;
-        }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        .alert.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 4px;
-        }
-
-        .alert.error p {
-            margin: 0.3rem 0;
-        }
-
-        .btn {
-            padding: 0.8rem 1.5rem;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 1rem;
-            cursor: pointer;
-        }
-
-        .btn:hover {
-            background: #0056b3;
-        }
-
-        p {
-            text-align: center;
-            margin-top: 1rem;
-        }
-    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -237,12 +140,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if (!empty($errors)): ?>
             <div class="alert error">
                 <?php foreach ($errors as $error): ?>
-                    <p><?= $error ?></p>
+                    <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
 
         <form action="register.php" method="post">
+            <?= csrf_field() ?>
             <div class="form-group">
                 <label>Full Name:</label>
                 <input type="text" name="name" required value="<?= htmlspecialchars($_POST['name'] ?? '') ?>">
@@ -321,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php foreach ($doctors as $doctor): ?>
                             <option value="<?= $doctor['doctor_id'] ?>"
                                 <?= ($_POST['doctor_id'] ?? '') == $doctor['doctor_id'] ? 'selected' : '' ?>>
-                                Dr. <?= htmlspecialchars($doctor['name']) ?> - <?= $doctor['specialization'] ?>
+                                Dr. <?= htmlspecialchars($doctor['name']) ?> - <?= htmlspecialchars($doctor['specialization']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

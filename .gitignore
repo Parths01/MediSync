@@ -7,3 +7,4 @@
 
 /uploads/doctors/*
 !/uploads/doctors/.gitkeep
+!/uploads/doctors/.htaccess

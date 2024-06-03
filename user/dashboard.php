@@ -27,103 +27,6 @@ try {
     <meta charset="UTF-8">
     <title>Dashboard - MediSync</title>
     <link href="../assets/css/style.css" rel="stylesheet">
-    <style>
-        body{
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: white;
-            box-sizing: border-box;
-            background-image: url('../assets/image/wave.png');
-            background-repeat: no-repeat;
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            justify-items: center;
-            margin-bottom: 10px;
-        }
-        .dashboard-container {
-            display: flex;
-            width: 100%;
-            height: 100vh;
-        }
-        .user-sidebar {
-            width: 15%;
-            height: 100%;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 10);
-            position: fixed;
-        }
-        .user-sidebar h2 {
-            color: white;
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-        .user-sidebar nav {
-            display: flex;
-            flex-direction: column;
-        }
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            padding: 10px 0;
-            margin-bottom: 10px;
-        }
-        .nav-link:hover, .nav-link.active {
-            background-color: white;
-            border-radius: 0 20px 20px 0px;
-            font-weight: bold;
-            color: black;
-            transition: 0.5s;
-        }
-        .nav-link.active {
-            font-weight: bold;
-        }
-        .user-main {
-            width: 80%;
-            height: 100%;
-            padding: 10px;
-            margin-left: 20%;
-        }
-        .appointment-card {
-            width: 30%;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-        .appointment-doctor {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-        .appointment-specialization {
-            font-size: 1rem;
-            font-weight: normal;
-        }
-        .appointment-time {
-            font-size: 1rem;
-            font-weight: bold;
-            margin-top: 5px;
-        }
-        .appointment-status {
-            font-size: 1rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            padding: 5px 10px;
-            border-radius: 5px;
-            margin-top: 5px;
-        }
-        .status-confirmed {
-            background-color: #28a745;
-        }
-        .status-pending {
-            background-color: #ffc107;
-        }
-        
-    </style>
 </head>
 <body>
     <div class="dashboard-container">
@@ -145,7 +48,7 @@ try {
             <h1>Upcoming Appointments</h1>
             
             <?php if ($error): ?>
-                <div class="alert error"><?= $error ?></div>
+                <div class="alert error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
 
             <?php if (empty($appointments)): ?>
@@ -163,8 +66,9 @@ try {
                         <div class="appointment-time">
                             <?= date('F j, Y \a\t g:i A', strtotime($appt['appointment_date'])) ?>
                         </div>
-                        <div class="appointment-status status-<?= $appt['status'] ?>">
-                            <?= ucfirst($appt['status']) ?>
+                        <?php $status = preg_replace('/[^a-z]/', '', strtolower((string) $appt['status'])); ?>
+                        <div class="appointment-status status-<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>">
+                            <?= htmlspecialchars(ucfirst((string) $appt['status']), ENT_QUOTES, 'UTF-8') ?>
                         </div>
                         <?php if (!empty($appt['description'])): ?>
                         <div class="appointment-description">
