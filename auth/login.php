@@ -2,10 +2,12 @@
 require_once '../includes/db_connection.php';
 require_once '../includes/auth_guard.php';
 
-// Redirect logged-in users
 if (isset($_SESSION['user_id'])) {
-    header("Location: ../user/dashboard.php");
-    exit();
+    if (($_SESSION['role'] ?? '') === 'admin') {
+        redirectTo('../admin/dashboard.php');
+    }
+
+    redirectTo('../user/dashboard.php');
 }
 
 $error = '';
@@ -13,26 +15,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'];
 
-    if (empty($email) || empty($password)) {
-        $error = "Please fill in all fields";
+    if (empty(trim((string) $email)) || empty(trim((string) $password))) {
+        $error = 'Please fill in all fields';
     } else {
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+        $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
+            session_regenerate_id(true);
             $_SESSION['user_id'] = $user['user_id'];
             $_SESSION['role'] = $user['role'];
             $_SESSION['name'] = $user['name'];
-            
+
             if ($user['role'] === 'admin') {
-                header("Location: ../admin/dashboard.php");
-            } else {
-                header("Location: ../user/dashboard.php");
+                redirectTo('../admin/dashboard.php');
             }
-            exit();
+
+            redirectTo('../user/dashboard.php');
         } else {
-            $error = "Invalid email or password";
+            $error = 'Invalid email or password';
         }
     }
 }

@@ -17,15 +17,19 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+function redirectTo($path, $statusCode = 302) {
+    header('Location: ' . $path, true, $statusCode);
+    exit();
+}
+
 function authenticateUser($allowedRoles = []) {
     if (!isset($_SESSION['user_id'])) {
-        header("Location: ../auth/login.php");
-        exit();
+        redirectTo('../auth/login.php');
     }
 
     if (!empty($allowedRoles) && !in_array($_SESSION['role'], $allowedRoles)) {
-        header("HTTP/1.1 403 Forbidden");
-        exit("Access Denied");
+        header('HTTP/1.1 403 Forbidden');
+        exit('Access Denied');
     }
 }
 ?>

@@ -93,13 +93,21 @@ VALUES (
 
 Default password for this hash: `Admin@123`
 
-6. Ensure upload directory is writable:
+6. Optional: load ten demo patient accounts and their appointment/medical history:
+
+```bash
+mysql -u your_db_user -p medisync < database/demo_data.sql
+```
+
+All demo accounts use the password `Demo@123` and emails from `demo01@medisync.test` through `demo10@medisync.test`.
+
+7. Ensure upload directory is writable:
 
 ```bash
 chmod -R 775 uploads/doctors
 ```
 
-7. Run the project on Apache:
+8. Run the project on Apache:
 
 - Set your Apache document root to this project folder, or
 - Place the project in your web root and open it in browser:
@@ -113,4 +121,5 @@ http://localhost/MediSync
 - Keep `.env` private and never commit it.
 - Use HTTPS in production.
 - Use `database/schema.sql` for clean setup.
-- Older SQL dump files are development snapshots.
+- `database/schema.sql` and `MediSync.sql` include the same demo users, appointments, and medical-history data.
+- `database/demo_data.sql` can be run separately when adding the demo data to an existing database.

@@ -132,6 +132,7 @@ try {
             <h2>Welcome, <?= htmlspecialchars($_SESSION['name']) ?></h2>
             <nav>
                 <a href="dashboard.php" class="nav-link active">Dashboard</a>
+                <a href="history.php" class="nav-link">My History</a>
                 <a href="doctors.php" class="nav-link">Book Appointment</a>
                 <a href="contact.php" class="nav-link">Contact Us</a>
                 <a href="profile.php" class="nav-link">My Profile</a>
