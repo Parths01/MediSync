@@ -10,7 +10,8 @@ try {
     $stmt = $pdo->query("SELECT * FROM doctors ORDER BY name");
     $doctors = $stmt->fetchAll();
 } catch (PDOException $e) {
-    $error = "Error fetching doctors: " . $e->getMessage();
+    error_log('User doctors fetch failed: ' . $e->getMessage());
+    $error = "Unable to load doctors right now.";
 }
 ?>
 <!DOCTYPE html>

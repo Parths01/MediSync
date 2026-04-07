@@ -29,7 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Clear form input
             $message = '';
         } catch (PDOException $e) {
-            $error = "Error sending message: " . $e->getMessage();
+            error_log('Contact message submit failed: ' . $e->getMessage());
+            $error = "Unable to send your message right now.";
         }
     }
 }

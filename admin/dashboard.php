@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/auth_guard.php';
 require_once '../includes/db_connection.php';
+authenticateUser(['admin']);
 
 // Get statistics
 $stmt = $pdo->query("SELECT COUNT(*) AS total_users FROM users");

@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/auth_guard.php';
 require_once '../includes/db_connection.php';
+authenticateUser(['admin']);
 
 
 $error = '';
@@ -13,7 +14,8 @@ try {
                        ORDER BY f.created_at DESC");
     $feedback_list = $stmt->fetchAll();
 } catch (PDOException $e) {
-    $error = "Error fetching feedback: " . $e->getMessage();
+    error_log('Feedback fetch failed: ' . $e->getMessage());
+    $error = "Unable to load feedback right now.";
 }
 ?>
 <!DOCTYPE html>

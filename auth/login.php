@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <title>MediSync - Login</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
     <style>
         body {
@@ -133,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="login-container">
         <h2>Login to MediSync</h2>
         <?php if ($error): ?>
-            <div class="alert error"><?php echo $error; ?></div>
+            <div class="alert error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
         
         <form action="login.php" method="post">

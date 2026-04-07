@@ -16,7 +16,8 @@ try {
     $stmt->execute([$user_id]);
     $user_data = $stmt->fetch();
 } catch (PDOException $e) {
-    $error = "Error fetching profile data: " . $e->getMessage();
+    error_log('Profile fetch failed: ' . $e->getMessage());
+    $error = "Unable to load profile right now.";
 }
 
 // Handle profile update
@@ -77,7 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             $user_data = $stmt->fetch();
 
         } catch (PDOException $e) {
-            $error = "Error updating profile: " . $e->getMessage();
+            error_log('Profile update failed: ' . $e->getMessage());
+            $error = "Unable to update profile right now.";
         }
     } else {
         $error = implode("<br>", $errors);
@@ -96,7 +98,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_feedback'])) {
             $stmt->execute([$user_id, $message]);
             $feedback_success = "Thank you for your feedback!";
         } catch (PDOException $e) {
-            $feedback_error = "Error submitting feedback: " . $e->getMessage();
+            error_log('Profile feedback submit failed: ' . $e->getMessage());
+            $feedback_error = "Unable to submit feedback right now.";
         }
     }
 }

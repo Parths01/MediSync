@@ -23,7 +23,8 @@ try {
         $error = "Doctor not found";
     }
 } catch (PDOException $e) {
-    $error = "Error fetching doctor details: " . $e->getMessage();
+    error_log('Book appointment doctor fetch failed: ' . $e->getMessage());
+    $error = "Unable to load doctor details right now.";
 }
 
 // Handle form submission
@@ -58,7 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Clear form inputs
             $description = '';
         } catch (PDOException $e) {
-            $error = "Error booking appointment: " . $e->getMessage();
+            error_log('Appointment booking failed: ' . $e->getMessage());
+            $error = "Unable to book appointment right now.";
         }
     }
 }

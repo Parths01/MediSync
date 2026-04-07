@@ -16,7 +16,8 @@ try {
     $stmt = $pdo->query("SELECT doctor_id, name, specialization FROM doctors");
     $doctors = $stmt->fetchAll();
 } catch (PDOException $e) {
-    $errors[] = "Error fetching doctors: " . $e->getMessage();
+    error_log('Register page doctor fetch failed: ' . $e->getMessage());
+    $errors[] = "Unable to load doctors right now. Please try again later.";
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -99,7 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             $pdo->rollBack();
             if (!in_array("Email already registered", $errors)) {
-                $errors[] = "Registration failed: " . $e->getMessage();
+                error_log('Registration failed: ' . $e->getMessage());
+                $errors[] = "Registration failed. Please try again.";
             }
         }
     }

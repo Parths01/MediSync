@@ -3,7 +3,7 @@ session_start();
 require_once '../includes/db_connection.php';
 
 // Redirect logged-in admins
-if (isset($_SESSION['admin_id'])) {
+if (isset($_SESSION['user_id']) && isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
     header("Location: dashboard.php");
     exit();
 }
@@ -16,15 +16,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($email) || empty($password)) {
         $error = "Please fill in all fields";
     } else {
-        // Corrected SQL query (removed incorrect password check)
         $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
         $stmt->execute([$email]);
         $admin = $stmt->fetch();
 
-        // Ensure user exists and compare plain-text passwords
-        if ($admin && $password === $admin['password']) {
-            $_SESSION['admin_id'] = $admin['user_id'];
-            $_SESSION['admin_name'] = $admin['name'];
+        $isValidPassword = false;
+        if ($admin) {
+            $isValidPassword = password_verify($password, $admin['password']);
+
+            if (!$isValidPassword && hash_equals($admin['password'], $password)) {
+                // Support legacy plain-text seed users and auto-upgrade password hash.
+                $isValidPassword = true;
+                $upgradedHash = password_hash($password, PASSWORD_DEFAULT);
+                $updateStmt = $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?");
+                $updateStmt->execute([$upgradedHash, $admin['user_id']]);
+            }
+        }
+
+        if ($admin && $isValidPassword && $admin['role'] === 'admin') {
+            $_SESSION['user_id'] = $admin['user_id'];
+            $_SESSION['role'] = $admin['role'];
+            $_SESSION['name'] = $admin['name'];
             header("Location: dashboard.php");
             exit();
         } else {
@@ -127,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         
         <?php if ($error): ?>
-            <div class="alert error"><?= $error ?></div>
+            <div class="alert error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <form action="login.php" method="post">

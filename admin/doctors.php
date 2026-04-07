@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/auth_guard.php';
 require_once '../includes/db_connection.php';
+authenticateUser(['admin']);
 
 // Configuration
 $upload_dir = '../uploads/doctors/';
@@ -83,7 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $success = "Doctor updated successfully!";
             }
         } catch (PDOException $e) {
-            $errors[] = "Database error: " . $e->getMessage();
+            error_log('Doctors admin write failed: ' . $e->getMessage());
+            $errors[] = "Unable to save doctor details right now.";
         }
     }
 }
@@ -106,7 +108,8 @@ if ($action === 'delete') {
         $stmt->execute([$doctor_id]);
         $success = "Doctor deleted successfully!";
     } catch (PDOException $e) {
-        $errors[] = "Delete failed: " . $e->getMessage();
+        error_log('Doctor delete failed: ' . $e->getMessage());
+        $errors[] = "Unable to delete doctor right now.";
     }
 }
 
@@ -118,7 +121,8 @@ if ($action === 'edit' && $doctor_id) {
         $stmt->execute([$doctor_id]);
         $current_doctor = $stmt->fetch();
     } catch (PDOException $e) {
-        $errors[] = "Error fetching doctor: " . $e->getMessage();
+        error_log('Doctor fetch for edit failed: ' . $e->getMessage());
+        $errors[] = "Unable to load doctor details right now.";
     }
 }
 
@@ -127,7 +131,8 @@ try {
     $stmt = $pdo->query("SELECT * FROM doctors ORDER BY name");
     $doctors = $stmt->fetchAll();
 } catch (PDOException $e) {
-    $errors[] = "Error fetching doctors: " . $e->getMessage();
+    error_log('Doctor list fetch failed: ' . $e->getMessage());
+    $errors[] = "Unable to load doctor list right now.";
 }
 ?>
 <!DOCTYPE html>

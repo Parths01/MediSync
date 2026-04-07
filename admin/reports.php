@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/auth_guard.php';
 require_once '../includes/db_connection.php';
+authenticateUser(['admin']);
 
 
 $error = '';
@@ -23,7 +24,8 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             $error = "No changes made. Message might not exist.";
         }
     } catch (PDOException $e) {
-        $error = "Error updating status: " . $e->getMessage();
+        error_log('Report status update failed: ' . $e->getMessage());
+        $error = "Unable to update status right now.";
     }
 }
 
@@ -35,7 +37,8 @@ try {
                        ORDER BY cm.created_at DESC");
     $reports = $stmt->fetchAll();
 } catch (PDOException $e) {
-    $error = "Error fetching reports: " . $e->getMessage();
+    error_log('Reports fetch failed: ' . $e->getMessage());
+    $error = "Unable to load reports right now.";
 }
 ?>
 <!DOCTYPE html>

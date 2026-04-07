@@ -17,7 +17,8 @@ try {
     $stmt->execute([$user_id]);
     $appointments = $stmt->fetchAll();
 } catch (PDOException $e) {
-    $error = "Error fetching appointments: " . $e->getMessage();
+    error_log('User dashboard appointment fetch failed: ' . $e->getMessage());
+    $error = "Unable to load appointments right now.";
 }
 ?>
 <!DOCTYPE html>
