@@ -38,6 +38,12 @@ The main goal of MediSync is to simplify hospital or clinic appointment workflow
 
 ## Steps to Setup the Project
 
+### Using XAMPP (Recommended for Windows/macOS Users)
+
+If you're using XAMPP, follow the detailed guide: **[XAMPP_SETUP.md](XAMPP_SETUP.md)**
+
+### Manual Setup (Linux / Custom Server)
+
 1. Clone the repository:
 
 ```bash
