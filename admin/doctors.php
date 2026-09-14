@@ -9,17 +9,26 @@ $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
 $max_size = 2 * 1024 * 1024; // 2MB
 
 $action = $_GET['action'] ?? '';
-$doctor_id = $_GET['id'] ?? 0;
+$doctor_id = (int) ($_GET['id'] ?? 0);
 $errors = [];
 $success = '';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
+    $action = $_POST['action'] ?? '';
+    $doctor_id = (int) ($_POST['doctor_id'] ?? 0);
     $name = trim($_POST['name']);
     $specialization = trim($_POST['specialization']);
     $experience = (int)$_POST['experience'];
     $contact = trim($_POST['contact']);
-    $photo = $_POST['current_photo'] ?? ''; // Keep existing photo if not changed
+    $photo = '';
+    if ($action === 'edit' && $doctor_id > 0) {
+        $existing = $pdo->prepare("SELECT photo FROM doctors WHERE doctor_id = ?");
+        $existing->execute([$doctor_id]);
+        $existing = $existing->fetch();
+        $photo = $existing['photo'] ?? '';
+    }
 
     // Validation
     if (empty($name)) $errors[] = "Name is required";
@@ -36,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mime_type = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
 
-        if (!in_array($mime_type, $allowed_types)) {
+        if (!in_array($mime_type, $allowed_types, true)) {
             $errors[] = "Only JPG, PNG, and GIF files are allowed";
         } elseif ($file['size'] > $max_size) {
             $errors[] = "File size must be less than 2MB";
@@ -47,16 +56,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             // Generate unique filename
-            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $filename = uniqid('doctor_') . '.' . $ext;
+            $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif'];
+            $filename = 'doctor_' . bin2hex(random_bytes(16)) . '.' . $extensions[$mime_type];
             $target_path = $upload_dir . $filename;
 
             if (move_uploaded_file($file['tmp_name'], $target_path)) {
+                $old_photo = $photo;
                 $photo = $target_path;
                 
-                // Delete old photo if exists
-                if (!empty($_POST['current_photo']) && file_exists($_POST['current_photo'])) {
-                    unlink($_POST['current_photo']);
+                if (!empty($old_photo) && basename($old_photo) === $old_photo) {
+                    $old_photo = $upload_dir . $old_photo;
+                }
+                if (!empty($old_photo) && preg_match('#^\.\./uploads/doctors/[^/\\\\]+$#', $old_photo) &&
+                    is_file($old_photo)) {
+                    unlink($old_photo);
                 }
             } else {
                 $errors[] = "Failed to upload photo";
@@ -66,13 +79,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         try {
-            if ($_POST['action'] === 'add') {
+            if ($action === 'add') {
                 $stmt = $pdo->prepare("INSERT INTO doctors 
                     (name, specialization, experience, contact_details, photo)
                     VALUES (?, ?, ?, ?, ?)");
                 $stmt->execute([$name, $specialization, $experience, $contact, $photo]);
                 $success = "Doctor added successfully!";
-            } elseif ($_POST['action'] === 'edit') {
+            } elseif ($action === 'edit' && $doctor_id > 0) {
                 $stmt = $pdo->prepare("UPDATE doctors SET
                     name = ?,
                     specialization = ?,
@@ -91,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Handle delete action
-if ($action === 'delete') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'delete') {
     try {
         // Get current photo path
         $stmt = $pdo->prepare("SELECT photo FROM doctors WHERE doctor_id = ?");
@@ -99,7 +112,9 @@ if ($action === 'delete') {
         $doctor = $stmt->fetch();
 
         // Delete photo if exists
-        if (!empty($doctor['photo']) && file_exists($doctor['photo'])) {
+        if (!empty($doctor['photo']) &&
+            preg_match('#^\.\./uploads/doctors/[^/\\\\]+$#', $doctor['photo']) &&
+            is_file($doctor['photo'])) {
             unlink($doctor['photo']);
         }
 
@@ -141,197 +156,6 @@ try {
     <meta charset="UTF-8">
     <title>Manage Doctors - MediSync</title>
     <link href="../assets/css/style.css" rel="stylesheet">
-    <style>
-        body{
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: white;
-            box-sizing: border-box;
-            background-image: url('../assets/image/wave.png');
-            background-repeat: no-repeat;
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            justify-items: center;
-            margin-bottom: 10px;
-        }
-        .admin-dashboard {
-            display: flex;
-            width: 100%;
-            height: 100vh;
-        }
-        .admin-sidebar {
-            width: 15%;
-            height: 100%;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 10);
-            position: fixed;
-        }
-        .admin-sidebar h2 {
-            color: white;
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-        .admin-sidebar nav {
-            display: flex;
-            flex-direction: column;
-        }
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            padding: 10px 0;
-            margin-bottom: 10px;
-        }
-        .nav-link:hover, .nav-link.active {
-            background-color: white;
-            border-radius: 0 20px 20px 0px;
-            font-weight: bold;
-            color: black;
-            transition: 0.5s;
-        }
-        .nav-link.active {
-            font-weight: bold;
-        }
-        .admin-main {
-            margin-left: 20%;
-            padding: 20px;
-            width: 80%;
-        }
-        .stat-card {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 10);
-            margin-bottom: 20px;
-        }
-        .stat-card h2 {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-        form {
-            margin-bottom: 20px;
-        }
-        .form-row {
-            display: flex;
-            justify-content: space-between;
-        }
-        .form-group {
-            width: 30%;
-        }
-        .form-group label {
-            font-size: 1.2rem;
-        }
-        .form-group input {
-            width: 95%;
-            padding: 10px;
-            margin-top: 5px;
-            border-radius: 5px;
-            border: none;
-        }
-        .btn {
-            padding: 10px;
-            margin-top: 20px;
-            border-radius: 5px;
-            border: none;
-            background: #333;
-            color: white;
-            font-size: 1.2rem;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .btn:hover {
-            background: #555;
-        }
-        .alert {
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-        }
-        .alert.error {
-            background: #dc3545;
-            color: white;
-        }
-        .alert.success {
-            background: #28a745;
-            color: white;
-        }
-        .search-form {
-            margin-bottom: 20px;
-        }
-        .search-form input {
-            padding: 10px;
-            border-radius: 5px;
-            border: none;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        table th, table td {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-            text-align: left;
-        }
-        table th {
-            background: #333;
-            color: white;
-        }
-        .no-photo {
-            display: inline-block;
-            padding: 0.5rem;
-            background: #ddd;
-            color: #333;
-            border-radius: 4px;
-        }
-        .current-photo {
-            margin-top: 1rem;
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            display: inline-block;
-        }
-        .current-photo img {
-            max-width: 150px;
-            height: auto;
-        }
-        input[type="file"] {
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 100%;
-        }
-        .doctor-photo {
-            max-width: 80px;
-            height: auto;
-            border-radius: 4px;
-        }
-        .btn-sm {
-            padding: 0.5rem 1rem;
-            margin-right: 0.5rem;
-            border-radius: 4px;
-            border: none;
-            background: #333;
-            color: white;
-            font-size: 0.8rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            cursor: pointer;
-        }
-        .btn-sm:hover {
-            background: #555;
-        }
-        .btn-sm.danger {
-            background: #dc3545;
-        }
-        .btn-sm.danger:hover {
-            background: #a71d2a;
-        }
-        
-    </style>
 </head>
 <body>
     <div class="admin-dashboard">
@@ -352,12 +176,12 @@ try {
             
             <!-- Notifications -->
             <?php if ($success): ?>
-                <div class="alert success"><?= $success ?></div>
+                <div class="alert success"><?= htmlspecialchars($success, ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
             <?php if (!empty($errors)): ?>
                 <div class="alert error">
                     <?php foreach ($errors as $error): ?>
-                        <p><?= $error ?></p>
+                        <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
@@ -366,6 +190,7 @@ try {
             <div class="stat-card">
                 <h2><?= $action === 'edit' ? 'Edit Doctor' : 'Add New Doctor' ?></h2>
                 <form method="post" enctype="multipart/form-data">
+                    <?= csrf_field() ?>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Full Name:</label>
@@ -397,14 +222,14 @@ try {
                         <input type="file" name="photo" accept="image/*">
                         <?php if (!empty($current_doctor['photo'])): ?>
                             <div class="current-photo">
-                                <img src="<?= $current_doctor['photo'] ?>" alt="Current Photo">
+                                <img src="<?= htmlspecialchars($current_doctor['photo'], ENT_QUOTES, 'UTF-8') ?>" alt="Current Photo">
                                 <p>Current Photo</p>
-                                <input type="hidden" name="current_photo" value="<?= $current_doctor['photo'] ?>">
                             </div>
                         <?php endif; ?>
                     </div>
                     
                     <input type="hidden" name="action" value="<?= $action === 'edit' ? 'edit' : 'add' ?>">
+                    <input type="hidden" name="doctor_id" value="<?= $doctor_id ?>">
                     <button type="submit" class="btn">
                         <?= $action === 'edit' ? 'Update Doctor' : 'Add Doctor' ?>
                     </button>
@@ -433,7 +258,7 @@ try {
                         <tr>
                             <td>
                                 <?php if (!empty($doctor['photo'])): ?>
-                                    <img src="<?= $doctor['photo'] ?>" alt="Doctor Photo" class="doctor-photo">
+                                    <img src="<?= htmlspecialchars($doctor['photo'], ENT_QUOTES, 'UTF-8') ?>" alt="Doctor Photo" class="doctor-photo">
                                 <?php else: ?>
                                     <span class="no-photo">No photo</span>
                                 <?php endif; ?>
@@ -445,9 +270,12 @@ try {
                             <td>
                                 <a href="doctors.php?action=edit&id=<?= $doctor['doctor_id'] ?>" 
                                    class="btn btn-sm">Edit</a>
-                                <a href="doctors.php?action=delete&id=<?= $doctor['doctor_id'] ?>" 
-                                   class="btn btn-sm danger"
-                                   onclick="return confirm('Are you sure?')">Delete</a>
+                                <form method="post" style="display:inline" onsubmit="return confirm('Are you sure?')">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="doctor_id" value="<?= $doctor['doctor_id'] ?>">
+                                    <button type="submit" class="btn btn-sm danger">Delete</button>
+                                </form>
                             </td>
                         </tr>
                         <?php endforeach; ?>

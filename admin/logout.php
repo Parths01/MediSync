@@ -1,7 +1,6 @@
 <?php
-session_start();
-$_SESSION = [];
-session_destroy();
+require_once '../includes/auth_guard.php';
+logout_session();
 header("Location: login.php");
 exit();
 ?>

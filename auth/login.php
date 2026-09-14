@@ -1,6 +1,6 @@
 <?php
-require_once '../includes/db_connection.php';
 require_once '../includes/auth_guard.php';
+require_once '../includes/db_connection.php';
 
 // Redirect logged-in users
 if (isset($_SESSION['user_id'])) {
@@ -10,6 +10,7 @@ if (isset($_SESSION['user_id'])) {
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
     $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'];
 
@@ -21,9 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['user_id'];
-            $_SESSION['role'] = $user['role'];
-            $_SESSION['name'] = $user['name'];
+            establish_session($user);
             
             if ($user['role'] === 'admin') {
                 header("Location: ../admin/dashboard.php");
@@ -44,82 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>MediSync - Login</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/css/bootstrap.min.css">
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: white;
-            box-sizing: border-box;
-            background-image: url('../assets/image/wave.png');
-            background-repeat: no-repeat;
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            justify-items: center;
-        }
-        .navbar {
-            backdrop-filter: blur(40px);
-            border-radius: 10px;
-            margin-top: 2%;
-            width: 95%;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 10);
-        }
-        .navbar-brand {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: white;
-        }
-        .login-container {
-            width: 100%;
-            max-width: 400px;
-            margin-top: 80px;
-            padding: 20px;
-            backdrop-filter: blur(40px);
-            border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 10);
-            text-align: center;
-        }
-        .login-container h2 {
-            margin-bottom: 20px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        .form-group input {
-            width: 95%;
-            padding: 10px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        .btn {
-            padding: 10px 20px;
-            font-size: 16px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .btn:hover {
-            background: #0056b3;
-        }
-        .alert {
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-        }
-        .alert.error {
-            background: #dc3545;
-            color: white;
-        }
-    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -137,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
         
         <form action="login.php" method="post">
+            <?= csrf_field() ?>
             <div class="form-group">
                 <label>Email:</label>
                 <input type="email" name="email" required>

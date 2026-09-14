@@ -40,7 +40,7 @@ The main goal of MediSync is to simplify hospital or clinic appointment workflow
 
 ### Using XAMPP (Recommended for Windows/macOS Users)
 
-If you're using XAMPP, follow the detailed guide: **[XAMPP_SETUP.md](XAMPP_SETUP.md)**
+For XAMPP, use the manual setup steps below with Apache and MySQL enabled.
 
 ### Manual Setup (Linux / Custom Server)
 
@@ -74,7 +74,7 @@ DB_CHARSET=utf8mb4
 mysql -u your_db_user -p < database/schema.sql
 ```
 
-5. Create the first admin user:
+5. Create the first admin user. Generate a hash with `php -r "echo password_hash('choose-a-strong-password', PASSWORD_DEFAULT), PHP_EOL;"` and use it below:
 
 ```sql
 INSERT INTO users (name, dob, gender, age, contact, email, password, blood_group, role)
@@ -85,13 +85,11 @@ VALUES (
   35,
   '0000000000',
   'admin@example.com',
-  '$2y$10$Q7vA0F4wW9sY2H0m9w2dEuEFmG3vN8z0vY9QKQvGfbc4fmd7wQ6sK',
+  '<generated-password-hash>',
   'O+',
   'admin'
 );
 ```
-
-Default password for this hash: `Admin@123`
 
 6. Ensure upload directory is writable:
 

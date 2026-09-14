@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once '../includes/auth_guard.php';
 require_once '../includes/db_connection.php';
 
 // Redirect logged-in admins
@@ -10,6 +10,7 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['role']) && $_SESSION['role']
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
     $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'];
 
@@ -23,20 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $isValidPassword = false;
         if ($admin) {
             $isValidPassword = password_verify($password, $admin['password']);
-
-            if (!$isValidPassword && hash_equals($admin['password'], $password)) {
-                // Support legacy plain-text seed users and auto-upgrade password hash.
-                $isValidPassword = true;
-                $upgradedHash = password_hash($password, PASSWORD_DEFAULT);
-                $updateStmt = $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?");
-                $updateStmt->execute([$upgradedHash, $admin['user_id']]);
-            }
         }
 
         if ($admin && $isValidPassword && $admin['role'] === 'admin') {
-            $_SESSION['user_id'] = $admin['user_id'];
-            $_SESSION['role'] = $admin['role'];
-            $_SESSION['name'] = $admin['name'];
+            establish_session($admin);
             header("Location: dashboard.php");
             exit();
         } else {
@@ -53,78 +44,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>MediSync - Admin Login</title>
     <link href="../assets/css/style.css" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: white;
-            box-sizing: border-box;
-            background-image: url('../assets/image/wave.png');
-            background-repeat: no-repeat;
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            justify-items: center;
-        }
-        .navbar {
-            backdrop-filter: blur(40px);
-            border-radius: 10px;
-            margin-top: 2%;
-            padding: 20px;
-            width: 95%;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 10);
-        }
-        .navbar-brand {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: white;
-        }
-        .admin-login-box {
-            margin: 0 auto;
-            margin-top: 10%;
-            width: 300px;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 10);
-        }
-        .admin-logo {
-            text-align: center;
-        }
-        .admin-logo img {
-            width: 100px;
-        }
-        .form-group {
-            margin-top: 20px;
-        }
-        .form-group label {
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
-        .form-group input {
-            width: 90%;
-            padding: 10px;
-            margin-top: 5px;
-            border-radius: 5px;
-            border: none;
-        }
-        .btn {
-            width: 100%;
-            padding: 10px;
-            margin-top: 20px;
-            border-radius: 5px;
-            border: none;
-            background: #333;
-            color: white;
-            font-size: 1.2rem;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .btn:hover {
-            background: #555;
-        }
-    </style>
 </head>
 <body class="admin-login">
      <!-- Navigation -->
@@ -143,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form action="login.php" method="post">
+            <?= csrf_field() ?>
             <div class="form-group">
                 <label>Admin Email:</label>
                 <input type="email" name="email" required autocomplete="off">

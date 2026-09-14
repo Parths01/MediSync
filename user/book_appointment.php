@@ -29,6 +29,7 @@ try {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
     $user_id = $_SESSION['user_id'];
     $appointment_date = $_POST['appointment_date'];
     $description = trim($_POST['description']);
@@ -36,7 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validation
     if (empty($appointment_date)) {
         $error = "Please select a date and time";
-    } elseif (strtotime($appointment_date) < time()) {
+    } elseif (!DateTime::createFromFormat('Y-m-d\TH:i', $appointment_date) ||
+        DateTime::createFromFormat('Y-m-d\TH:i', $appointment_date)->getTimestamp() <= time()) {
         $error = "Appointment date cannot be in the past";
     } elseif (empty($description)) {
         $error = "Please enter a description of your symptoms";
@@ -44,20 +46,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($error)) {
         try {
-            $stmt = $pdo->prepare("INSERT INTO appointments 
+            $stmt = $pdo->prepare("SELECT doctor_id FROM doctors WHERE doctor_id = ?");
+            $stmt->execute([(int) $doctor_id]);
+            if (!$stmt->fetch()) {
+                $error = "Doctor not found";
+            }
+            $appointment = DateTime::createFromFormat('Y-m-d\TH:i', $appointment_date);
+            $stmt = $pdo->prepare("SELECT appointment_id FROM appointments
+                WHERE doctor_id = ? AND appointment_date = ?
+                AND status IN ('pending', 'confirmed')");
+            $stmt->execute([(int) $doctor_id, $appointment->format('Y-m-d H:i:s')]);
+            if ($stmt->fetch()) {
+                $error = "That appointment time is already booked";
+            }
+            if (empty($error)) {
+                $stmt = $pdo->prepare("INSERT INTO appointments
                 (user_id, doctor_id, appointment_date, description, status, assigned_by)
                 VALUES (?, ?, ?, ?, 'pending', 'user')");
             
-            $stmt->execute([
+                $stmt->execute([
                 $user_id,
                 $doctor_id,
-                $appointment_date,
+                $appointment->format('Y-m-d H:i:s'),
                 $description
-            ]);
+                ]);
 
-            $success = "Appointment booked successfully!";
-            // Clear form inputs
-            $description = '';
+                $success = "Appointment booked successfully!";
+                $description = '';
+            }
         } catch (PDOException $e) {
             error_log('Appointment booking failed: ' . $e->getMessage());
             $error = "Unable to book appointment right now.";
@@ -71,132 +87,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>Book Appointment - MediSync</title>
     <link href="../assets/css/style.css" rel="stylesheet">
-    <style>
-        body{
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: white;
-            box-sizing: border-box;
-            background-image: url('../assets/image/wave.png');
-            background-repeat: no-repeat;
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            justify-items: center;
-            margin-bottom: 10px;
-        }
-        .dashboard-container {
-            display: flex;
-            width: 100%;
-            height: 100vh;
-        }
-        .user-sidebar {
-            width: 15%;
-            height: 100%;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 10);
-            position: fixed;
-        }
-        .user-sidebar h2 {
-            color: white;
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-        .user-sidebar nav {
-            display: flex;
-            flex-direction: column;
-        }
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            padding: 10px 0;
-            margin-bottom: 10px;
-        }
-        .nav-link:hover, .nav-link.active {
-            background-color: white;
-            border-radius: 0 20px 20px 0px;
-            font-weight: bold;
-            color: black;
-            transition: 0.5s;
-        }
-        .nav-link.active {
-            font-weight: bold;
-        }
-        .user-main {
-            width: 80%;
-            height: 100%;
-            padding: 10px;
-            margin-left: 20%;
-        }
-        h1 {
-            margin-bottom: 2rem;
-        }
-        .alert {
-            background: #f44336;
-            color: white;
-            padding: 10px;
-            margin-bottom: 1rem;
-            border-radius: 5px;
-        }
-        .success {
-            background: #4CAF50;
-        }
-        .doctor-info {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px;
-            border-radius: 10px;
-            margin-bottom: 1rem;
-        }
-        .doctor-info h3 {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-        .doctor-info p {
-            font-size: 1rem;
-            font-weight: normal;
-            margin: 5px 0;
-        }
-        form {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px;
-            border-radius: 10px;
-        }
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        label {
-            font-size: 1rem;
-            font-weight: bold;
-        }
-        input, textarea {
-            width: 70%;
-            padding: 10px;
-            font-size: 1rem;
-            margin-top: 5px;
-            border-radius: 10px;
-            border: none;
-        }
-        textarea {
-            height: 100px;
-        }
-        small {
-            font-size: 0.8rem;
-            color: #ccc;
-        }
-        .btn {
-            padding: 10px 20px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-right: 10px;
-        }
-    </style>
 </head>
 <body>
     <div class="dashboard-container">
@@ -218,22 +108,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <h1>Book Appointment</h1>
                 
                 <?php if ($error): ?>
-                    <div class="alert error"><?= $error ?></div>
+                    <div class="alert error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
                 <?php endif; ?>
                 
                 <?php if ($success): ?>
-                    <div class="alert success"><?= $success ?></div>
+                    <div class="alert success"><?= htmlspecialchars($success, ENT_QUOTES, 'UTF-8') ?></div>
                 <?php endif; ?>
 
                 <?php if ($doctor): ?>
                     <div class="doctor-info">
                         <h3>Dr. <?= htmlspecialchars($doctor['name']) ?></h3>
                         <p>Specialization: <?= htmlspecialchars($doctor['specialization']) ?></p>
-                        <p>Experience: <?= $doctor['experience'] ?> years</p>
+                        <p>Experience: <?= htmlspecialchars((string) $doctor['experience'], ENT_QUOTES, 'UTF-8') ?> years</p>
                         <p>Contact: <?= htmlspecialchars($doctor['contact_details']) ?></p>
                     </div>
 
                     <form method="post">
+                        <?= csrf_field() ?>
                         <div class="form-group">
                             <label>Appointment Date & Time:</label>
                             <input type="datetime-local" name="appointment_date" 
@@ -253,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </form>
                 <?php else: ?>
-                    <div class="alert error"><?= $error ?></div>
+                    <div class="alert error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
                     <a href="doctors.php" class="btn">Back to Doctors List</a>
                 <?php endif; ?>
             </div>

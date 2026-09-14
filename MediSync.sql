@@ -165,7 +165,7 @@ CREATE TABLE users (
 
 LOCK TABLES users WRITE;
 /*!40000 ALTER TABLE users DISABLE KEYS */;
-INSERT INTO users VALUES (1,'Parth Suryawanshi','2003-08-10','Male',21,'+91 8600291347','parth001@gmail.com','parth001','A+','admin','2025-02-08 20:11:37'),(2,'Balaji Suryawanshi','1977-06-14','Male',48,'9503208977','balajisuryawanshi171@gmail.com','$2y$10$0hduDFhw6hkq5CAUEzw0y.X3YWRjFqMDJFzxQk2xuJLGpUyFtPKBe','A+','patient','2025-02-08 21:25:13');
+INSERT INTO users VALUES (2,'Balaji Suryawanshi','1977-06-14','Male',48,'9503208977','balajisuryawanshi171@gmail.com','$2y$10$0hduDFhw6hkq5CAUEzw0y.X3YWRjFqMDJFzxQk2xuJLGpUyFtPKBe','A+','patient','2025-02-02 21:25:13');
 /*!40000 ALTER TABLE users ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
