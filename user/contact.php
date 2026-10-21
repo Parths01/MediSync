@@ -50,7 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <h2>Welcome, <?= htmlspecialchars($_SESSION['name']) ?></h2>
             <nav>
                 <a href="dashboard.php" class="nav-link">Dashboard</a>
+                <a href="history.php" class="nav-link">My History</a>
                 <a href="doctors.php" class="nav-link">Book Appointment</a>
+                <a href="symptom_checker.php" class="nav-link">Find the Right Doctor</a>
                 <a href="contact.php" class="nav-link active">Contact Us</a>
                 <a href="profile.php" class="nav-link">My Profile</a>
                 <a href="../auth/logout.php" class="nav-link">Logout</a>

@@ -167,6 +167,7 @@ try {
                 <a href="doctors.php" class="nav-link active">Manage Doctors</a>
                 <a href="feedback.php" class="nav-link">Patient Feedback</a>
                 <a href="reports.php" class="nav-link">System Reports</a>
+                <a href="ml_insights.php" class="nav-link">AI Insights</a>
                 <a href="logout.php" class="nav-link">Logout</a>
             </nav>
         </div>
