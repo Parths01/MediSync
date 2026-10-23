@@ -1,125 +1,169 @@
 # MediSync
 
-MediSync is a web-based healthcare appointment management system that helps patients book doctor appointments online and allows admins to manage doctors, feedback, and reports.
+MediSync uses a Next.js frontend, FastAPI backend, and PostgreSQL database. It
+implements patient and administrator workflows, including authentication,
+appointments, medical history, contact and feedback, doctor management, symptom
+recommendations, and administrative heuristic insights.
 
-## Purpose of the Project
+## Current architecture
 
-The main goal of MediSync is to simplify hospital or clinic appointment workflows.
+| Area | Implementation | Current scope |
+| --- | --- | --- |
+| Modern frontend | Next.js, React, TypeScript | Public directory, authentication, patient workspace, and administrator workflows |
+| Modern API | FastAPI, SQLAlchemy async, PostgreSQL | Authentication, patient and admin workflows, doctor directory and photo uploads, symptom recommendations, and heuristic insights |
+| Symptom prototype | scikit-learn TF-IDF and Multinomial Naive Bayes | Specialty rankings trained on a small synthetic dataset; demo only, not clinically validated |
+| Tests | pytest, pytest-asyncio, httpx | Backend model, security, API, heuristic, and symptom-model tests; frontend lint, typecheck, and production build |
 
-- Patients can register, log in, browse doctors, and book appointments.
-- Patients can manage profile details and send contact messages/feedback.
-- Admin users can manage doctor records and review user feedback/reports.
-- The system keeps all records in a MySQL database for easy tracking.
+The symptom recommender is now a machine-learning prototype trained only on
+synthetic examples. It has not been clinically validated and is not medical
+advice or a diagnosis. Admin insights remain unvalidated heuristics.
 
-## Stack Used
+## Repository layout
 
-- Frontend: HTML, CSS, Bootstrap
-- Backend: Core PHP (procedural + PDO)
-- Database: MySQL
-- Web Server: Apache (recommended)
-- Version Control: Git
-
-## Project Structure
-
-- `index.php` -> landing page
-- `auth/` -> user authentication (login, register, logout)
-- `user/` -> patient dashboard, booking, contact, profile
-- `admin/` -> admin login, dashboard, doctor management, reports
-- `includes/` -> shared auth and database connection files
-- `assets/` -> CSS and images
-- `uploads/doctors/` -> uploaded doctor photos
-- `database/schema.sql` -> clean database schema for setup
+```text
+backend/app/           FastAPI app, API routes, SQLAlchemy models, and schemas
+backend/tests/         Backend API tests
+backend/ml/            Synthetic symptom examples and model evaluation command
+backend/migrations/    Alembic PostgreSQL migrations
+frontend/app/           Next.js routes and global styles
+frontend/components/    Shared frontend components
+frontend/lib/           Frontend API client
+uploads/doctors/        Preserved doctor images, also served by the modern API
+```
 
 ## Prerequisites
 
-- PHP 8.1 or higher
-- MySQL 8.0+ (or MariaDB equivalent)
-- Apache with `mod_headers` enabled
+- Python 3.11 and PostgreSQL 15+ for the FastAPI backend. Use Python 3.11 with
+  the pinned backend dependencies.
+- Node.js 20.9+ and npm for the Next.js frontend.
 
-## Steps to Setup the Project
+## Quick start
 
-### Using XAMPP (Recommended for Windows/macOS Users)
+Start each service in its own PowerShell terminal. The backend must be configured
+and running before the frontend can load live doctor data.
 
-For XAMPP, use the manual setup steps below with Apache and MySQL enabled.
+### 1. Configure and run the backend
 
-### Manual Setup (Linux / Custom Server)
+From the repository root:
 
-1. Clone the repository:
-
-```bash
-git clone <your-repo-url>
-cd MediSync
+```powershell
+Set-Location backend
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+notepad .env
 ```
 
-2. Create environment file:
+Set `DATABASE_URL` in `backend/.env` to the connection string for your local
+PostgreSQL database. Use the actual database, role, and password configured on
+your machine; `.env.example` contains placeholders, not usable credentials.
 
-```bash
-cp .env.example .env
+Apply PostgreSQL migrations, create the first administrator, and start the API:
+
+```powershell
+python init_db.py
+python -m app.create_admin --name "Admin User" --email "admin@example.com" --dob "1990-01-01" --gender Other --contact "0000000000"
+python -m uvicorn app.main:app --reload
 ```
 
-3. Update `.env` with your database credentials:
+The administrator command prompts for a password without echoing it, requires
+at least 14 characters, and refuses to add an administrator if one already
+exists. It never promotes an existing patient account. The API is at
+`http://localhost:8000`; interactive documentation is at
+`http://localhost:8000/docs`. `init_db.py` applies the Alembic migration head;
+it does not import data.
 
-```env
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_NAME=medisync
-DB_USER=your_db_user
-DB_PASS=your_db_password
-DB_CHARSET=utf8mb4
+### Import records from a MySQL source (optional)
+
+The optional importer reads an external MySQL database and previews conflicts
+by default. Back up both databases before importing; PostgreSQL is written only
+when `--apply` is supplied. It maps users by normalized email, preserves
+related IDs where safe, re-hashes plaintext passwords, and requires referenced
+doctor photos to exist in `uploads/doctors`. Legacy `DATETIME` values default
+to `Asia/Kolkata`; override this with `--datetime-timezone` when needed.
+
+From the backend directory, preview the source first. The password is prompted
+securely if `MYSQL_PASSWORD` is not set:
+
+```powershell
+python -m app.migrate_mysql --source-database medisync
 ```
 
-4. Create database and import schema:
+Review the counts and resolve any reported conflicts before applying:
 
-```bash
-mysql -u your_db_user -p < database/schema.sql
+```powershell
+python -m app.migrate_mysql --source-database medisync --apply
 ```
 
-5. Create the first admin user. Generate a hash with `php -r "echo password_hash('choose-a-strong-password', PASSWORD_DEFAULT), PHP_EOL;"` and use it below:
+This imports data only and does not change or delete the MySQL source. The
+previously imported snapshot records were cleared from local PostgreSQL at the
+user's request. The local MySQL server had no live `medisync` database; no
+source dataset is currently included in this repository.
 
-```sql
-INSERT INTO users (name, dob, gender, age, contact, email, password, blood_group, role)
-VALUES (
-  'Admin User',
-  '1990-01-01',
-  'Other',
-  35,
-  '0000000000',
-  'admin@example.com',
-  '<generated-password-hash>',
-  'O+',
-  'admin'
-);
+Run backend tests from the `backend` directory with:
+
+```powershell
+python -m pytest
 ```
 
-Default password for this hash: `Admin@123`
+The symptom recommender is trained from synthetic examples when the API starts.
+To evaluate it on the separate synthetic holdout examples, run this from
+`backend/`:
 
-6. Optional: load ten demo patient accounts and their appointment/medical history:
-
-```bash
-mysql -u your_db_user -p medisync < database/demo_data.sql
+```powershell
+python -m ml.train_symptom_model
 ```
 
-All demo accounts use the password `Demo@123` and emails from `demo01@medisync.test` through `demo10@medisync.test`.
+The holdout score only measures this small synthetic demo dataset; it is not
+evidence of clinical accuracy.
 
-7. Ensure upload directory is writable:
+### 2. Run the frontend
 
-```bash
-chmod -R 775 uploads/doctors
+In a second terminal, from the repository root:
+
+```powershell
+Set-Location frontend
+npm install
+if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
+npm run dev
 ```
 
-8. Run the project on Apache:
+The frontend runs at `http://localhost:3000`. `NEXT_PUBLIC_API_URL` defaults to
+`http://localhost:8000`; set it in `frontend/.env.local` if the API uses another
+URL. Public pages are available at `/` and `/doctors`; patient pages include
+`/login`, `/register`, `/dashboard`, `/appointments/new`, `/history`,
+`/profile`, `/contact`, and `/symptoms`; administrator pages include `/admin`,
+`/admin/doctors`, `/admin/appointments`, `/admin/reports`, `/admin/feedback`,
+and `/admin/insights`.
 
-- Set your Apache document root to this project folder, or
-- Place the project in your web root and open it in browser:
+Frontend checks:
 
-```text
-http://localhost/MediSync
+```powershell
+npm run lint
+npm run typecheck
+npm run build
 ```
 
-## Notes
+## Security and configuration notes
 
-- Keep `.env` private and never commit it.
-- Use HTTPS in production.
-- Use `database/schema.sql` for clean setup.
-- `database/schema.sql` and `MediSync.sql` include the same demo users, appointments, and medical-history data.
-- `database/demo_data.sql` can be run separately when adding the demo data to an existing database.
+- Keep `.env`, `backend/.env`, and `frontend/.env.local` private; only the
+  `.env.example` templates belong in source control.
+- Replace all example placeholders with local values. The backend requires
+  `DATABASE_URL` and does not supply fallback database credentials.
+- Use HTTPS and a production-grade secrets manager for deployments.
+- The legacy PHP/MySQL application and its SQL datasets have been removed.
+  Doctor photos remain in `uploads/doctors/` because the modern API serves
+  images from that directory.
+- This project has not been assessed for healthcare regulatory compliance.
+
+## Known limitations
+
+- The previous snapshot import was cleared from PostgreSQL; the schema and
+  original administrator account were retained. The optional migration utility
+  can import records from a future MySQL source.
+- The symptom recommender is a non-clinical ML prototype trained on synthetic
+  examples and has not been validated for patient care. Admin appointment
+  indicators are also unvalidated heuristics; never use them to deny, delay, or
+  prioritize patient care.
+- No CI/CD or deployment manifests are included.

@@ -1,0 +1,61 @@
+symptoms,specialty,split
+"A tight pressure in my chest when I walk upstairs",Cardiologist,train
+"My heart races and sometimes beats irregularly",Cardiologist,train
+"I get a squeezing feeling in my chest and feel winded",Cardiologist,train
+"My heartbeat feels like it skips or flutters",Cardiologist,train
+"I feel pressure around my chest after light activity",Cardiologist,train
+"I have episodes of a pounding heartbeat",Cardiologist,train
+"My chest feels heavy and I become short of breath",Cardiologist,train
+"I notice an irregular pulse and unusual chest discomfort",Cardiologist,train
+"My chest feels tight during a brisk walk",Cardiologist,test
+"I get sudden fluttering sensations in my heart",Cardiologist,test
+"I have an itchy red rash on my arms",Dermatologist,train
+"There are dry flaky patches on my skin",Dermatologist,train
+"My face has several painful acne spots",Dermatologist,train
+"I have a skin rash that keeps itching",Dermatologist,train
+"A patch of skin is swollen and irritated",Dermatologist,train
+"My scalp is very itchy and flaky",Dermatologist,train
+"I noticed a changing spot on my skin",Dermatologist,train
+"My hands have dry cracked skin that burns",Dermatologist,train
+"My skin has red itchy bumps after using soap",Dermatologist,test
+"There are scaly patches on my elbows",Dermatologist,test
+"My knee hurts and feels swollen after a fall",Orthopedic Surgeon,train
+"I have persistent lower back pain when bending",Orthopedic Surgeon,train
+"My shoulder is stiff and difficult to lift",Orthopedic Surgeon,train
+"I twisted my ankle and it hurts to put weight on it",Orthopedic Surgeon,train
+"My wrist has been painful since a sports injury",Orthopedic Surgeon,train
+"My joints feel stiff when I get out of bed",Orthopedic Surgeon,train
+"I have pain along my spine after lifting something",Orthopedic Surgeon,train
+"My hip hurts when I walk for a long time",Orthopedic Surgeon,train
+"I hurt my knee playing football and now it is swollen",Orthopedic Surgeon,test
+"My shoulder aches whenever I raise my arm",Orthopedic Surgeon,test
+"My young child has a fever and a runny nose",Pediatrician,train
+"My toddler has been coughing since yesterday",Pediatrician,train
+"My child says their ear hurts and they feel warm",Pediatrician,train
+"My baby has a mild cough and seems tired",Pediatrician,train
+"My school-age child has a sore throat",Pediatrician,train
+"My infant has a rash and is fussier than usual",Pediatrician,train
+"My child has stomach discomfort and nausea",Pediatrician,train
+"My son has a fever and does not want to eat",Pediatrician,train
+"My daughter has a cough and a slight fever",Pediatrician,test
+"My toddler is tired and has been sneezing",Pediatrician,test
+"I have a fever and a dry cough",General Physician,train
+"I have felt unusually tired for several days",General Physician,train
+"My throat is sore and I have body aches",General Physician,train
+"I feel weak and have had a low fever",General Physician,train
+"I have a cough, congestion, and fatigue",General Physician,train
+"I feel unwell with chills and a headache",General Physician,train
+"I have been feeling tired and lightheaded",General Physician,train
+"I have a stuffy nose and persistent sneezing",General Physician,train
+"I have fatigue, a cough, and a sore throat",General Physician,test
+"I feel weak and feverish with body aches",General Physician,test
+"I have a throbbing headache with sensitivity to light",Neurologist,train
+"My fingers sometimes feel numb and tingly",Neurologist,train
+"I get dizzy spells and the room seems to spin",Neurologist,train
+"I have recurring migraines with nausea",Neurologist,train
+"My hands shake when I try to hold a cup",Neurologist,train
+"I have trouble concentrating and keep forgetting things",Neurologist,train
+"I feel pins and needles running down one leg",Neurologist,train
+"I have brief episodes of dizziness and blurred focus",Neurologist,train
+"Bright light makes my recurring headaches worse",Neurologist,test
+"I feel tingling and numbness in my hands",Neurologist,test

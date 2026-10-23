@@ -4,7 +4,17 @@
 
 /vendor/
 /.idea/
+/backend/.venv/
+/backend/**/__pycache__/
+/backend/.pytest_cache/
+/backend/ml/models/
+/frontend/node_modules/
+/frontend/.next/
+/frontend/out/
+/frontend/next-env.d.ts
+/frontend/tsconfig.tsbuildinfo
+/frontend/.env.local
+/frontend/.env.*.local
 
 /uploads/doctors/*
 !/uploads/doctors/.gitkeep
-!/uploads/doctors/.htaccess

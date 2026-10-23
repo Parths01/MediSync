@@ -1,0 +1,20 @@
+fastapi==0.159.1
+uvicorn[standard]==0.54.0
+sqlalchemy[asyncio]==2.1.6
+asyncpg==0.32.0
+pydantic==2.14.1
+pydantic-settings==2.16.1
+alembic==1.14.0
+email-validator==2.2.0
+pwdlib[argon2]==0.2.1
+bcrypt==4.2.1
+Pillow==12.1.1
+python-multipart==0.0.20
+PyMySQL==1.2.3
+tzdata==2026.5
+scikit-learn==1.8.0
+
+# Tests
+pytest==9.1.1
+pytest-asyncio==1.4.0
+httpx==0.28.1
