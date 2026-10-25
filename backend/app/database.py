@@ -9,8 +9,16 @@ from app.config import get_settings
 
 settings = get_settings()
 
+
+def _normalize_database_url(url: str) -> str:
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return f"postgresql+asyncpg://{url.removeprefix(prefix)}"
+    return url
+
+
 engine = create_async_engine(
-    settings.database_url,
+    _normalize_database_url(settings.database_url),
     pool_pre_ping=True,
     echo=(settings.app_env == "development"),
 )

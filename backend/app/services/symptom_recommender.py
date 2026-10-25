@@ -1,5 +1,6 @@
 import csv
 from pathlib import Path
+from typing import TypedDict
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
@@ -9,9 +10,18 @@ from sklearn.pipeline import Pipeline
 TRAINING_DATA_PATH = (
     Path(__file__).resolve().parents[2] / "ml" / "synthetic_symptom_examples.csv"
 )
+VALID_SPLITS = {"train", "test"}
+
+
+class SpecialtySuggestion(TypedDict):
+    specialty: str
+    score: float
 
 
 def load_examples(split: str) -> tuple[list[str], list[str]]:
+    if split not in VALID_SPLITS:
+        raise ValueError(f"Unsupported dataset split: {split}")
+
     symptoms: list[str] = []
     specialties: list[str] = []
 
@@ -21,12 +31,19 @@ def load_examples(split: str) -> tuple[list[str], list[str]]:
             raise ValueError("Synthetic symptom dataset has an invalid header")
 
         for row in rows:
-            if row["split"] != split:
-                continue
+            if None in row or any(row.get(field) is None for field in rows.fieldnames):
+                raise ValueError("Synthetic symptom dataset contains an invalid row")
+
             description = row["symptoms"].strip()
             specialty = row["specialty"].strip()
+            row_split = row["split"].strip()
             if not description or not specialty:
                 raise ValueError("Synthetic symptom dataset contains an empty field")
+            if row_split not in VALID_SPLITS:
+                raise ValueError("Synthetic symptom dataset contains an invalid split")
+            if row_split != split:
+                continue
+
             symptoms.append(description)
             specialties.append(specialty)
 
@@ -50,7 +67,7 @@ def train_model() -> Pipeline:
 _MODEL = train_model()
 
 
-def recommend_specialties(symptoms: str) -> list[dict[str, object]]:
+def recommend_specialties(symptoms: str) -> list[SpecialtySuggestion]:
     normalized = symptoms.strip()
     if not normalized:
         return []
@@ -62,10 +79,9 @@ def recommend_specialties(symptoms: str) -> list[dict[str, object]]:
     probabilities = _MODEL.predict_proba([normalized])[0]
     ranked = sorted(
         zip(_MODEL.classes_, probabilities, strict=True),
-        key=lambda item: float(item[1]),
-        reverse=True,
+        key=lambda item: (-float(item[1]), str(item[0]).casefold()),
     )
     return [
-        {"specialty": specialty, "score": round(float(score), 4)}
+        {"specialty": str(specialty), "score": round(float(score), 4)}
         for specialty, score in ranked[:3]
     ]

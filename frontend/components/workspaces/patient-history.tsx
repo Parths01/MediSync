@@ -1,5 +1,8 @@
 "use client";
 
+import { ListPagination } from "@/components/list-pagination";
+import { API_PAGE_SIZE } from "@/lib/api";
+
 import { FormEvent, useEffect, useState } from "react";
 
 import { WorkspaceError, WorkspaceFrame, WorkspaceLoading, useProtectedUser } from "@/components/protected-workspace";
@@ -12,11 +15,16 @@ export function PatientHistory() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [hasMoreEntries, setHasMoreEntries] = useState(false);
+  const [loadingMoreEntries, setLoadingMoreEntries] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
     getMedicalHistory(controller.signal)
-      .then(setEntries)
+      .then((records) => {
+        setEntries(records);
+        setHasMoreEntries(records.length === API_PAGE_SIZE);
+      })
       .catch((reason: unknown) => {
         if (reason instanceof DOMException && reason.name === "AbortError") return;
         setError(reason instanceof Error ? reason.message : "Could not load health history.");
@@ -100,6 +108,25 @@ export function PatientHistory() {
           <div className="workspace-empty">No health history entries yet.</div>
         )}
         <div className="workspace-list">
+          {hasMoreEntries && (
+            <ListPagination
+              count={entries.length}
+              hasMore={hasMoreEntries}
+              loading={loadingMoreEntries}
+              onLoadMore={() => {
+                setLoadingMoreEntries(true);
+                getMedicalHistory(undefined, API_PAGE_SIZE, entries.length)
+                  .then((records) => {
+                    setEntries((current) => [...current, ...records]);
+                    setHasMoreEntries(records.length === API_PAGE_SIZE);
+                  })
+                  .catch((reason: unknown) => {
+                    setError(reason instanceof Error ? reason.message : "Could not load more health history.");
+                  })
+                  .finally(() => setLoadingMoreEntries(false));
+              }}
+            />
+          )}
           {entries.map((entry) => (
             <article className="workspace-list-item" key={entry.history_id}>
               <div>

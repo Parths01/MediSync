@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: medisync-api
+    runtime: docker
+    plan: starter
+    dockerContext: .
+    dockerfilePath: ./backend/Dockerfile
+    dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    preDeployCommand: python init_db.py
+    healthCheckPath: /health
+    disk:
+      name: doctor-uploads
+      mountPath: /app/uploads/doctors
+      sizeGB: 1
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: medisync-db
+          property: connectionString
+      - key: FRONTEND_URL
+        sync: false
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+
+  - type: web
+    name: medisync-frontend
+    runtime: docker
+    plan: starter
+    dockerContext: ./frontend
+    dockerfilePath: ./frontend/Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+
+databases:
+  - name: medisync-db
+    databaseName: medisync
+    user: medisync
+    plan: basic-256mb
+    postgresMajorVersion: "16"
+    ipAllowList: []

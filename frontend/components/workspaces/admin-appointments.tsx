@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 
 import { WorkspaceError, WorkspaceFrame, WorkspaceLoading, useProtectedUser } from "@/components/protected-workspace";
+import { ListPagination } from "@/components/list-pagination";
 import {
   Appointment,
   AppointmentStatus,
+  API_PAGE_SIZE,
   getAdminAppointments,
   updateAppointmentStatus,
 } from "@/lib/api";
@@ -28,11 +30,16 @@ export function AdminAppointments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [hasMoreAppointments, setHasMoreAppointments] = useState(false);
+  const [loadingMoreAppointments, setLoadingMoreAppointments] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
     getAdminAppointments(controller.signal)
-      .then(setAppointments)
+      .then((records) => {
+        setAppointments(records);
+        setHasMoreAppointments(records.length === API_PAGE_SIZE);
+      })
       .catch((reason: unknown) => {
         if (reason instanceof DOMException && reason.name === "AbortError") return;
         setError(reason instanceof Error ? reason.message : "Could not load appointments.");
@@ -69,6 +76,7 @@ export function AdminAppointments() {
         {loading && <p className="muted-copy">Loading appointments…</p>}
         {!loading && appointments.length === 0 && <div className="workspace-empty">No appointments found.</div>}
         {appointments.length > 0 && (
+          <>
           <div className="table-wrap">
             <table className="workspace-table">
               <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Reason</th><th>Status</th></tr></thead>
@@ -98,6 +106,26 @@ export function AdminAppointments() {
               </tbody>
             </table>
           </div>
+          {hasMoreAppointments && (
+            <ListPagination
+              count={appointments.length}
+              hasMore={hasMoreAppointments}
+              loading={loadingMoreAppointments}
+              onLoadMore={() => {
+                setLoadingMoreAppointments(true);
+                getAdminAppointments(undefined, API_PAGE_SIZE, appointments.length)
+                  .then((records) => {
+                    setAppointments((current) => [...current, ...records]);
+                    setHasMoreAppointments(records.length === API_PAGE_SIZE);
+                  })
+                  .catch((reason: unknown) => {
+                    setError(reason instanceof Error ? reason.message : "Could not load more appointments.");
+                  })
+                  .finally(() => setLoadingMoreAppointments(false));
+              }}
+            />
+          )}
+          </>
         )}
       </section>
     </WorkspaceFrame>

@@ -1,0 +1,14 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+**/.next
+**/tsconfig.tsbuildinfo
+backend/ml/models
+uploads/doctors/*
+!uploads/doctors/.gitkeep

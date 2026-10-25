@@ -128,6 +128,7 @@ const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").
   /\/+$/,
   "",
 );
+export const API_PAGE_SIZE = 50;
 
 export function getDoctorPhotoUrl(photo: string | null): string | null {
   if (!photo) return null;
@@ -253,8 +254,12 @@ export function getCurrentUser(signal?: AbortSignal): Promise<User> {
   return apiRequest<User>("/auth/me", { signal });
 }
 
-export function getMyAppointments(signal?: AbortSignal): Promise<Appointment[]> {
-  return apiRequest<Appointment[]>("/patient/appointments", { signal });
+export function getMyAppointments(
+  signal?: AbortSignal,
+  limit = API_PAGE_SIZE,
+  offset = 0,
+): Promise<Appointment[]> {
+  return apiRequest<Appointment[]>(`/patient/appointments?limit=${limit}&offset=${offset}`, { signal });
 }
 
 export function bookAppointment(payload: {
@@ -289,8 +294,12 @@ export function updateProfile(payload: {
   });
 }
 
-export function getMedicalHistory(signal?: AbortSignal): Promise<MedicalHistory[]> {
-  return apiRequest<MedicalHistory[]>("/patient/history", { signal });
+export function getMedicalHistory(
+  signal?: AbortSignal,
+  limit = API_PAGE_SIZE,
+  offset = 0,
+): Promise<MedicalHistory[]> {
+  return apiRequest<MedicalHistory[]>(`/patient/history?limit=${limit}&offset=${offset}`, { signal });
 }
 
 export function addMedicalHistory(payload: {
@@ -334,8 +343,12 @@ export function getAdminInsights(signal?: AbortSignal): Promise<AdminInsights> {
   return apiRequest<AdminInsights>("/admin/insights", { signal });
 }
 
-export function getAdminAppointments(signal?: AbortSignal): Promise<Appointment[]> {
-  return apiRequest<Appointment[]>("/admin/appointments", { signal });
+export function getAdminAppointments(
+  signal?: AbortSignal,
+  limit = API_PAGE_SIZE,
+  offset = 0,
+): Promise<Appointment[]> {
+  return apiRequest<Appointment[]>(`/admin/appointments?limit=${limit}&offset=${offset}`, { signal });
 }
 
 export function updateAppointmentStatus(
@@ -348,8 +361,12 @@ export function updateAppointmentStatus(
   });
 }
 
-export function getAdminReports(signal?: AbortSignal): Promise<ContactReport[]> {
-  return apiRequest<ContactReport[]>("/admin/reports", { signal });
+export function getAdminReports(
+  signal?: AbortSignal,
+  limit = API_PAGE_SIZE,
+  offset = 0,
+): Promise<ContactReport[]> {
+  return apiRequest<ContactReport[]>(`/admin/reports?limit=${limit}&offset=${offset}`, { signal });
 }
 
 export function updateReportStatus(
@@ -362,8 +379,12 @@ export function updateReportStatus(
   });
 }
 
-export function getAdminFeedback(signal?: AbortSignal): Promise<Feedback[]> {
-  return apiRequest<Feedback[]>("/admin/feedback", { signal });
+export function getAdminFeedback(
+  signal?: AbortSignal,
+  limit = API_PAGE_SIZE,
+  offset = 0,
+): Promise<Feedback[]> {
+  return apiRequest<Feedback[]>(`/admin/feedback?limit=${limit}&offset=${offset}`, { signal });
 }
 
 export function createDoctor(payload: Omit<Doctor, "doctor_id" | "photo" | "created_at">): Promise<Doctor> {

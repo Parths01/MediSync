@@ -1,5 +1,8 @@
 "use client";
 
+import { ListPagination } from "@/components/list-pagination";
+import { API_PAGE_SIZE } from "@/lib/api";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -19,11 +22,16 @@ export function PatientDashboard() {
   const [loadingAppointments, setLoadingAppointments] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [hasMoreAppointments, setHasMoreAppointments] = useState(false);
+  const [loadingMoreAppointments, setLoadingMoreAppointments] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
     getMyAppointments(controller.signal)
-      .then(setAppointments)
+      .then((records) => {
+        setAppointments(records);
+        setHasMoreAppointments(records.length === API_PAGE_SIZE);
+      })
       .catch((reason: unknown) => {
         if (reason instanceof DOMException && reason.name === "AbortError") return;
         setError(reason instanceof Error ? reason.message : "Could not load appointments.");
@@ -83,6 +91,25 @@ export function PatientDashboard() {
           </div>
         )}
         <div className="workspace-list">
+          {hasMoreAppointments && (
+            <ListPagination
+              count={appointments.length}
+              hasMore={hasMoreAppointments}
+              loading={loadingMoreAppointments}
+              onLoadMore={() => {
+                setLoadingMoreAppointments(true);
+                getMyAppointments(undefined, API_PAGE_SIZE, appointments.length)
+                  .then((records) => {
+                    setAppointments((current) => [...current, ...records]);
+                    setHasMoreAppointments(records.length === API_PAGE_SIZE);
+                  })
+                  .catch((reason: unknown) => {
+                    setError(reason instanceof Error ? reason.message : "Could not load more appointments.");
+                  })
+                  .finally(() => setLoadingMoreAppointments(false));
+              }}
+            />
+          )}
           {upcoming.map((appointment) => (
             <article className="workspace-list-item" key={appointment.appointment_id}>
               <div>
@@ -93,13 +120,13 @@ export function PatientDashboard() {
               </div>
               <div className="workspace-item-actions">
                 <span className={`status-pill status-${appointment.status}`}>{appointment.status}</span>
-                {appointment.status === "pending" && (
+                {["pending", "confirmed"].includes(appointment.status) && (
                   <button
                     className="text-button"
                     onClick={() => void handleCancel(appointment.appointment_id)}
                     type="button"
                   >
-                    Cancel request
+                    {appointment.status === "confirmed" ? "Cancel appointment" : "Cancel request"}
                   </button>
                 )}
               </div>

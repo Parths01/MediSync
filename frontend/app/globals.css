@@ -362,6 +362,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .workspace-state { width: min(1192px, calc(100% - 56px)); margin: 50px auto; }
 .workspace-list { display: grid; }
 .workspace-list-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 17px 0; border-top: 1px solid var(--line); }
+.workspace-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .workspace-list-item h3 { margin: 0 0 3px; font-size: .97rem; }
 .workspace-list-item p { margin: 4px 0; color: var(--muted); font-size: .82rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .workspace-item-actions { display: grid; justify-items: end; gap: 8px; }

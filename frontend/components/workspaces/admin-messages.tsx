@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 
 import { WorkspaceError, WorkspaceFrame, WorkspaceLoading, useProtectedUser } from "@/components/protected-workspace";
+import { ListPagination } from "@/components/list-pagination";
 import {
   ContactReport,
   Feedback,
+  API_PAGE_SIZE,
   getAdminFeedback,
   getAdminReports,
   updateReportStatus,
@@ -23,11 +25,16 @@ export function AdminReports() {
   const [reports, setReports] = useState<ContactReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasMoreReports, setHasMoreReports] = useState(false);
+  const [loadingMoreReports, setLoadingMoreReports] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
     getAdminReports(controller.signal)
-      .then(setReports)
+      .then((records) => {
+        setReports(records);
+        setHasMoreReports(records.length === API_PAGE_SIZE);
+      })
       .catch((reason: unknown) => {
         if (reason instanceof DOMException && reason.name === "AbortError") return;
         setError(reason instanceof Error ? reason.message : "Could not load inquiries.");
@@ -64,6 +71,7 @@ export function AdminReports() {
         {loading && <p className="muted-copy">Loading inquiries…</p>}
         {!loading && !error && reports.length === 0 && <div className="workspace-empty">No inquiries found.</div>}
         {reports.length > 0 && (
+          <>
           <div className="table-wrap">
             <table className="workspace-table">
               <thead><tr><th>Patient</th><th>Message</th><th>Received</th><th>Status</th><th>Action</th></tr></thead>
@@ -84,6 +92,26 @@ export function AdminReports() {
               </tbody>
             </table>
           </div>
+          {hasMoreReports && (
+            <ListPagination
+              count={reports.length}
+              hasMore={hasMoreReports}
+              loading={loadingMoreReports}
+              onLoadMore={() => {
+                setLoadingMoreReports(true);
+                getAdminReports(undefined, API_PAGE_SIZE, reports.length)
+                  .then((records) => {
+                    setReports((current) => [...current, ...records]);
+                    setHasMoreReports(records.length === API_PAGE_SIZE);
+                  })
+                  .catch((reason: unknown) => {
+                    setError(reason instanceof Error ? reason.message : "Could not load more inquiries.");
+                  })
+                  .finally(() => setLoadingMoreReports(false));
+              }}
+            />
+          )}
+          </>
         )}
       </section>
     </WorkspaceFrame>
@@ -95,11 +123,16 @@ export function AdminFeedback() {
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasMoreFeedback, setHasMoreFeedback] = useState(false);
+  const [loadingMoreFeedback, setLoadingMoreFeedback] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
     getAdminFeedback(controller.signal)
-      .then(setFeedback)
+      .then((records) => {
+        setFeedback(records);
+        setHasMoreFeedback(records.length === API_PAGE_SIZE);
+      })
       .catch((reason: unknown) => {
         if (reason instanceof DOMException && reason.name === "AbortError") return;
         setError(reason instanceof Error ? reason.message : "Could not load feedback.");
@@ -127,6 +160,25 @@ export function AdminFeedback() {
             </article>
           ))}
         </div>
+        {hasMoreFeedback && (
+          <ListPagination
+            count={feedback.length}
+            hasMore={hasMoreFeedback}
+            loading={loadingMoreFeedback}
+            onLoadMore={() => {
+              setLoadingMoreFeedback(true);
+              getAdminFeedback(undefined, API_PAGE_SIZE, feedback.length)
+                .then((records) => {
+                  setFeedback((current) => [...current, ...records]);
+                  setHasMoreFeedback(records.length === API_PAGE_SIZE);
+                })
+                .catch((reason: unknown) => {
+                  setError(reason instanceof Error ? reason.message : "Could not load more feedback.");
+                })
+                .finally(() => setLoadingMoreFeedback(false));
+            }}
+          />
+        )}
       </section>
     </WorkspaceFrame>
   );
