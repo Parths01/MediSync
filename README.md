@@ -74,18 +74,21 @@ this local Compose configuration publicly with its default HTTP URLs or
 ### Deploy with Render
 
 The root [`render.yaml`](./render.yaml) Blueprint defines the API, frontend,
-managed PostgreSQL database, and persistent doctor-photo disk. In Render, create
-a new Blueprint and connect this repository. During the first sync, provide
+managed PostgreSQL database, and free-tier service plans. In Render, create a
+new Blueprint and connect this repository. During the first sync, provide
 `FRONTEND_URL` as the frontend's HTTPS origin and `NEXT_PUBLIC_API_URL` as the
 API's HTTPS origin (for example, `https://medisync-frontend.onrender.com` and
 `https://medisync-api.onrender.com`, without a trailing slash). If Render
 assigns different service URLs, use the actual URLs shown in the dashboard.
 
-The Blueprint uses paid web-service plans because Render persistent disks are
-not available on free web services; it also creates a paid PostgreSQL instance.
-Review current Render pricing before syncing. The API applies database
-migrations as a pre-deploy step and keeps uploaded photos on its persistent
-disk. This repository has not been deployed to Render.
+Free web services spin down after 15 minutes without traffic and can take about
+a minute to wake up. Their filesystems are ephemeral, so uploaded doctor photos
+are lost when the API restarts, redeploys, or spins down. The free PostgreSQL
+database is limited to 1 GB and expires 30 days after creation; after a further
+14-day grace period, Render deletes it and its data unless you upgrade. The API
+runs database migrations when it starts. This free setup is for testing only:
+do not use it for production or store real patient information. This repository
+has not been deployed to Render.
 
 ### 1. Configure and run the backend
 

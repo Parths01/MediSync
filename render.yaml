@@ -2,16 +2,11 @@ services:
   - type: web
     name: medisync-api
     runtime: docker
-    plan: starter
+    plan: free
     dockerContext: .
     dockerfilePath: ./backend/Dockerfile
-    dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    preDeployCommand: python init_db.py
+    dockerCommand: /bin/sh -c 'python init_db.py && exec uvicorn app.main:app --host 0.0.0.0 --port "$PORT"'
     healthCheckPath: /health
-    disk:
-      name: doctor-uploads
-      mountPath: /app/uploads/doctors
-      sizeGB: 1
     envVars:
       - key: APP_ENV
         value: production
@@ -27,7 +22,7 @@ services:
   - type: web
     name: medisync-frontend
     runtime: docker
-    plan: starter
+    plan: free
     dockerContext: ./frontend
     dockerfilePath: ./frontend/Dockerfile
     healthCheckPath: /
@@ -39,6 +34,6 @@ databases:
   - name: medisync-db
     databaseName: medisync
     user: medisync
-    plan: basic-256mb
+    plan: free
     postgresMajorVersion: "16"
     ipAllowList: []
