@@ -6,16 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import get_settings
+from app.db_urls import normalize_asyncpg_url
 from app.db_tls import get_database_ssl_argument
 
 settings = get_settings()
 
 
 def _normalize_database_url(url: str) -> str:
-    for prefix in ("postgres://", "postgresql://"):
-        if url.startswith(prefix):
-            return f"postgresql+asyncpg://{url.removeprefix(prefix)}"
-    return url
+    return normalize_asyncpg_url(url)
 
 
 _engine: AsyncEngine | None = None

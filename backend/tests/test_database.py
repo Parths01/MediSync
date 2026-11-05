@@ -22,6 +22,10 @@ from app.database import _normalize_database_url
             "sqlite+aiosqlite:///medisync.db",
             "sqlite+aiosqlite:///medisync.db",
         ),
+        (
+            "postgresql://user:password@host/db?sslmode=require&channel_binding=require",
+            "postgresql+asyncpg://user:password@host/db",
+        ),
     ],
 )
 def test_normalize_database_url(database_url: str, expected_url: str) -> None:
