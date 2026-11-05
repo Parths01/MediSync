@@ -11,6 +11,7 @@ from app.api.routes import doctors as doctors_route
 from app.main import app
 from app.models import Doctor, User
 from app.security import get_admin_user
+from app.security_audit import audit_privileged_access
 
 
 class FakeResult:
@@ -76,6 +77,39 @@ async def test_health_check() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+@pytest.mark.asyncio
+async def test_readiness_check_requires_database(monkeypatch) -> None:
+    class ReadySession:
+        async def execute(self, _statement):
+            return None
+
+    app.dependency_overrides[get_db] = lambda: ReadySession()
+    try:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/health/ready")
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready"}
+
+
+@pytest.mark.asyncio
+async def test_readiness_check_hides_database_error_details() -> None:
+    class FailedSession:
+        async def execute(self, _statement):
+            raise RuntimeError("secret database connection details")
+
+    app.dependency_overrides[get_db] = lambda: FailedSession()
+    try:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/health/ready")
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Service dependencies are unavailable"}
+    assert "secret" not in response.text
 
 
 @pytest.mark.asyncio
@@ -210,12 +244,14 @@ async def test_admin_can_upload_and_retrieve_valid_doctor_photo(
         password_hash="unused",
         role="admin",
     )
+    app.dependency_overrides[audit_privileged_access] = lambda: None
     try:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://test",
         ) as client:
             client.cookies.set("medisync_csrf", "test-csrf")
+            client.cookies.set("medisync_session", "test-session")
             response = await client.post(
                 "/api/v1/doctors/1/photo",
                 headers={
@@ -253,12 +289,14 @@ async def test_doctor_photo_upload_rejects_non_image_content(
         password_hash="unused",
         role="admin",
     )
+    app.dependency_overrides[audit_privileged_access] = lambda: None
     try:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://test",
         ) as client:
             client.cookies.set("medisync_csrf", "test-csrf")
+            client.cookies.set("medisync_session", "test-session")
             response = await client.post(
                 "/api/v1/doctors/1/photo",
                 headers={

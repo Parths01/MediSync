@@ -13,7 +13,7 @@ import pymysql
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import AsyncSessionLocal, engine
+from app.database import get_engine, get_session_factory
 from app.models import Appointment, ContactMessage, Doctor, Feedback, MedicalHistory, User
 from app.security import hash_password
 
@@ -258,7 +258,7 @@ async def _import(
         "legacy_passwords_rehashed": password_rehash_count,
     }
 
-    async with AsyncSessionLocal() as session:
+    async with get_session_factory()() as session:
         async with session.begin():
             target_users = list((await session.scalars(select(User).with_for_update())).all())
             target_doctors = list((await session.scalars(select(Doctor))).all())
@@ -478,7 +478,7 @@ async def _run() -> None:
 
     source = _load_source(args, password)
     _assert_source_integrity(source)
-    engine.echo = False
+    get_engine().echo = False
     result = await _import(source, local_timezone, args.apply)
     print("Source rows:", {key.removeprefix("source_"): value for key, value in result.items() if key.startswith("source_")})
     print(
@@ -503,7 +503,7 @@ def main() -> None:
         try:
             await _run()
         finally:
-            await engine.dispose()
+            await get_engine().dispose()
 
     try:
         asyncio.run(run_and_dispose())

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Activity,
+  BrainCircuit,
   CalendarDays,
   LayoutDashboard,
   Lightbulb,
@@ -74,6 +75,7 @@ export function WorkspaceFrame({
           { label: "Doctors", href: "/admin/doctors", icon: Stethoscope },
           { label: "Appointments", href: "/admin/appointments", icon: CalendarDays },
           { label: "Heuristic insights", href: "/admin/insights", icon: Lightbulb },
+          { label: "AI analytics", href: "/admin/ai", icon: BrainCircuit },
           { label: "Inquiries", href: "/admin/reports", icon: Mail },
           { label: "Feedback", href: "/admin/feedback", icon: MessageSquareText },
         ]
@@ -81,6 +83,7 @@ export function WorkspaceFrame({
           { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
           { label: "Find a doctor", href: "/doctors", icon: Search },
           { label: "Symptom checker", href: "/symptoms", icon: Activity },
+          { label: "AI assistant", href: "/ai-assistant", icon: MessageSquareText },
           { label: "My history", href: "/history", icon: CalendarDays },
           { label: "My profile", href: "/profile", icon: UserRound },
           { label: "Contact", href: "/contact", icon: Mail },

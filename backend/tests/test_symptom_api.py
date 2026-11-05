@@ -91,6 +91,7 @@ async def test_symptom_recommendations_return_specialty_matched_doctors() -> Non
             base_url="http://test",
         ) as client:
             client.cookies.set("medisync_csrf", "test-csrf")
+            client.cookies.set("medisync_session", "test-session")
             response = await client.post(
                 "/api/v1/patient/symptom-check",
                 headers={
@@ -120,6 +121,7 @@ async def test_symptom_recommendations_return_specialty_matched_doctors() -> Non
 
 @pytest.mark.asyncio
 async def test_symptom_recommendations_reject_blank_text() -> None:
+    app.dependency_overrides[get_db] = lambda: FakeSession()
     app.dependency_overrides[get_current_user] = patient_user
     try:
         async with httpx.AsyncClient(
@@ -127,6 +129,7 @@ async def test_symptom_recommendations_reject_blank_text() -> None:
             base_url="http://test",
         ) as client:
             client.cookies.set("medisync_csrf", "test-csrf")
+            client.cookies.set("medisync_session", "test-session")
             response = await client.post(
                 "/api/v1/patient/symptom-check",
                 headers={

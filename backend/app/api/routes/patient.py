@@ -31,11 +31,12 @@ from app.security import (
     get_current_user,
     hash_password,
     require_csrf,
+    require_session_cookie,
     verify_password_and_update,
 )
 from app.services.symptom_recommender import recommend_specialties
 
-router = APIRouter(dependencies=[Depends(require_csrf)])
+router = APIRouter(dependencies=[Depends(require_csrf), Depends(require_session_cookie)])
 
 
 def _appointment_view(appointment: Appointment, doctor: Doctor) -> AppointmentView:

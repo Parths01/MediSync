@@ -108,6 +108,19 @@ export interface AdminInsights {
   disclaimer: string;
 }
 
+export interface AdminAIAnalytics {
+  conversations: number;
+  requests: number;
+  successful_requests: number;
+  failed_requests: number;
+  average_latency_ms: number | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  helpful_feedback: number;
+  not_helpful_feedback: number;
+  token_usage_available: boolean;
+}
+
 export interface SymptomRecommendation {
   specialty: string;
   score: number;
@@ -117,6 +130,68 @@ export interface SymptomResult {
   recommendations: SymptomRecommendation[];
   doctors: Doctor[];
   disclaimer: string;
+}
+
+export interface AIMessage { message_id: number; role: "user" | "assistant"; content: string; created_at: string; }
+export interface AIConversation { conversation_id: number; title: string; updated_at: string; messages: AIMessage[]; }
+export interface AICitation { title: string; url: string; checked_at: string; }
+export interface AIChatMetadata { conversation_id: number; message_id: number; citations: AICitation[]; emergency: boolean; doctors: Pick<Doctor, "doctor_id" | "name" | "specialization" | "experience">[]; delivery_mode: "buffered"; }
+
+export function getAIConversations(signal?: AbortSignal): Promise<AIConversation[]> {
+  return apiRequest<AIConversation[]>("/ai/conversations", { signal });
+}
+export function getAIConversation(id: number, signal?: AbortSignal): Promise<AIConversation> {
+  return apiRequest<AIConversation>(`/ai/conversations/${id}`, { signal });
+}
+export function deleteAIConversation(id: number): Promise<void> {
+  return apiRequest<void>(`/ai/conversations/${id}`, { method: "DELETE" });
+}
+export function deleteAllAIConversations(): Promise<void> {
+  return apiRequest<void>("/ai/conversations", { method: "DELETE" });
+}
+export function submitAIFeedback(messageId: number, rating: "helpful" | "not_helpful"): Promise<{ status: string }> {
+  return apiRequest<{ status: string }>(`/ai/messages/${messageId}/feedback`, {
+    method: "POST", body: JSON.stringify({ rating }),
+  });
+}
+export async function streamAIChat(
+  message: string,
+  conversationId: number | null,
+  onContent: (text: string) => void,
+  signal?: AbortSignal,
+): Promise<AIChatMetadata> {
+  const headers = new Headers({ Accept: "text/event-stream", "Content-Type": "application/json" });
+  headers.set("X-CSRF-Token", await getCsrfToken());
+  const response = await fetch(`${apiBaseUrl}/api/v1/ai/chat/stream`, {
+    method: "POST", headers, credentials: "include", signal,
+    body: JSON.stringify({ message, conversation_id: conversationId }),
+  });
+  if (!response.ok || !response.body) {
+    let detail = `MediSync request failed (API returned ${response.status}).`;
+    try { const body: unknown = await response.json(); if (typeof body === "object" && body !== null && "detail" in body && typeof body.detail === "string") detail = body.detail; } catch { /* keep fallback */ }
+    throw new Error(detail);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let metadata: AIChatMetadata | null = null;
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? "";
+    for (const event of events) {
+      const line = event.split("\n").find((part) => part.startsWith("data: "));
+      if (!line) continue;
+      const data: unknown = JSON.parse(line.slice(6));
+      if (typeof data === "object" && data !== null && "type" in data && (data.type === "response" || data.type === "delta") && "text" in data && typeof data.text === "string") onContent(data.text);
+      if (typeof data === "object" && data !== null && "type" in data && data.type === "error" && "detail" in data && typeof data.detail === "string") throw new Error(data.detail);
+      if (typeof data === "object" && data !== null && "type" in data && data.type === "metadata") metadata = data as unknown as AIChatMetadata;
+    }
+    if (done) break;
+  }
+  if (!metadata) throw new Error("The assistant response ended unexpectedly.");
+  return metadata;
 }
 
 interface AuthResult {
@@ -341,6 +416,10 @@ export function getAdminDashboard(signal?: AbortSignal): Promise<AdminDashboard>
 
 export function getAdminInsights(signal?: AbortSignal): Promise<AdminInsights> {
   return apiRequest<AdminInsights>("/admin/insights", { signal });
+}
+
+export function getAdminAIAnalytics(signal?: AbortSignal): Promise<AdminAIAnalytics> {
+  return apiRequest<AdminAIAnalytics>("/admin/ai-analytics", { signal });
 }
 
 export function getAdminAppointments(

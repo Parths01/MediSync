@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import Doctor
 from app.schemas import DoctorCreate, DoctorResponse, DoctorUpdate
-from app.security import get_admin_user, require_csrf
+from app.security import get_admin_user, require_csrf, require_session_cookie
+from app.security_audit import audit_privileged_access
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -60,7 +61,7 @@ async def get_doctor(doctor_id: int, db: AsyncSession = Depends(get_db)) -> Doct
     "",
     response_model=DoctorResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_csrf)],
+    dependencies=[Depends(require_csrf), Depends(require_session_cookie), Depends(audit_privileged_access)],
 )
 async def create_doctor(
     payload: DoctorCreate,
@@ -77,7 +78,7 @@ async def create_doctor(
 @router.post(
     "/{doctor_id}/photo",
     response_model=DoctorResponse,
-    dependencies=[Depends(require_csrf)],
+    dependencies=[Depends(require_csrf), Depends(require_session_cookie), Depends(audit_privileged_access)],
 )
 async def upload_doctor_photo(
     doctor_id: int,
@@ -142,7 +143,7 @@ async def upload_doctor_photo(
 @router.put(
     "/{doctor_id}",
     response_model=DoctorResponse,
-    dependencies=[Depends(require_csrf)],
+    dependencies=[Depends(require_csrf), Depends(require_session_cookie), Depends(audit_privileged_access)],
 )
 async def update_doctor(
     doctor_id: int,
@@ -164,7 +165,7 @@ async def update_doctor(
 @router.delete(
     "/{doctor_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_csrf)],
+    dependencies=[Depends(require_csrf), Depends(require_session_cookie), Depends(audit_privileged_access)],
 )
 async def delete_doctor(
     doctor_id: int,

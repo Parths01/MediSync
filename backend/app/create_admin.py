@@ -6,7 +6,7 @@ from getpass import getpass
 from email_validator import validate_email
 from sqlalchemy import func, select, text
 
-from app.database import AsyncSessionLocal, engine
+from app.database import get_engine, get_session_factory
 from app.models import User
 from app.security import hash_password
 
@@ -32,7 +32,7 @@ async def _create_first_admin(
     contact: str,
     password: str,
 ) -> int:
-    async with AsyncSessionLocal.begin() as session:
+    async with get_session_factory().begin() as session:
         await session.execute(text("SELECT pg_advisory_xact_lock(1297303379)"))
         admin_count = await session.scalar(
             select(func.count()).select_from(User).where(User.role == "admin")
@@ -100,7 +100,7 @@ def main() -> None:
     try:
         asyncio.run(_run())
     finally:
-        asyncio.run(engine.dispose())
+        asyncio.run(get_engine().dispose())
 
 
 if __name__ == "__main__":

@@ -111,9 +111,21 @@ async def require_csrf(request: Request) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token")
 
 
+async def require_session_cookie(request: Request) -> None:
+    """Reject anonymous requests before any database driver or session is needed."""
+    if not request.cookies.get(get_settings().session_cookie_name):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+
+
+async def get_authenticated_db(request: Request):
+    await require_session_cookie(request)
+    async for session in get_db():
+        yield session
+
+
 async def get_current_user(
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_authenticated_db),
 ) -> User:
     settings = get_settings()
     token = request.cookies.get(settings.session_cookie_name)

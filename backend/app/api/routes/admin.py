@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Appointment, ContactMessage, Doctor, Feedback, User
+from app.models import AIFeedback, AIConversation, AIUsageEvent, Appointment, ContactMessage, Doctor, Feedback, User
 from app.schemas.admin import (
     AdminDashboardResponse,
     AdminInsightsResponse,
@@ -16,19 +16,53 @@ from app.schemas.admin import (
     FeedbackInsightView,
     MonthlyCount,
 )
+from app.schemas.ai import AIAnalyticsResponse
 from app.schemas.patient import (
     AppointmentStatusUpdate,
     AppointmentView,
     ContactMessageView,
     FeedbackView,
 )
-from app.security import get_admin_user, require_csrf
+from app.security import get_admin_user, require_csrf, require_session_cookie
+from app.security_audit import audit_privileged_access
 from app.services.heuristics import appointment_follow_up_indicator, classify_feedback
 
-router = APIRouter(dependencies=[Depends(require_csrf)])
+router = APIRouter(dependencies=[
+    Depends(require_csrf),
+    Depends(require_session_cookie),
+    Depends(audit_privileged_access),
+])
 
 APPOINTMENT_STATUSES = ("pending", "confirmed", "completed", "rejected", "cancelled")
 REPORTING_TIMEZONE = ZoneInfo("Asia/Kolkata")
+
+
+@router.get("/ai-analytics", response_model=AIAnalyticsResponse)
+async def get_ai_analytics(
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_admin_user),
+) -> AIAnalyticsResponse:
+    conversations = await db.scalar(select(func.count()).select_from(AIConversation)) or 0
+    requests = await db.scalar(select(func.count()).select_from(AIUsageEvent)) or 0
+    successful = await db.scalar(select(func.count()).select_from(AIUsageEvent).where(AIUsageEvent.succeeded.is_(True))) or 0
+    failed = await db.scalar(select(func.count()).select_from(AIUsageEvent).where(AIUsageEvent.succeeded.is_(False))) or 0
+    average_latency = await db.scalar(select(func.avg(AIUsageEvent.latency_ms)))
+    helpful = await db.scalar(select(func.count()).select_from(AIFeedback).where(AIFeedback.rating == "helpful")) or 0
+    not_helpful = await db.scalar(select(func.count()).select_from(AIFeedback).where(AIFeedback.rating == "not_helpful")) or 0
+    input_tokens = await db.scalar(select(func.sum(AIUsageEvent.input_tokens)))
+    output_tokens = await db.scalar(select(func.sum(AIUsageEvent.output_tokens)))
+    return AIAnalyticsResponse(
+        conversations=conversations,
+        requests=requests,
+        successful_requests=successful,
+        failed_requests=failed,
+        average_latency_ms=float(average_latency) if average_latency is not None else None,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        helpful_feedback=helpful,
+        not_helpful_feedback=not_helpful,
+        token_usage_available=input_tokens is not None or output_tokens is not None,
+    )
 
 
 def _month_start(value: datetime) -> datetime:

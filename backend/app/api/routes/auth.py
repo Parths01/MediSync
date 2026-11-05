@@ -13,6 +13,7 @@ from app.security import (
     get_current_user,
     hash_password,
     require_csrf,
+    require_session_cookie,
     revoke_session,
     set_csrf_cookie,
     verify_password_and_update,
@@ -88,14 +89,18 @@ async def login(
     return AuthResponse(user=UserResponse.model_validate(user), csrf_token=csrf_token)
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me", response_model=UserResponse, dependencies=[Depends(require_session_cookie)])
 async def read_current_user(
     user: User = Depends(get_current_user),
 ) -> UserResponse:
     return UserResponse.model_validate(user)
 
 
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_csrf)])
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_csrf), Depends(require_session_cookie)],
+)
 async def logout(
     request: Request,
     response: Response,

@@ -8,6 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/db-init/00-create-roles.sql:/docker-entrypoint-initdb.d/00-create-roles.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
@@ -15,6 +16,22 @@ services:
       retries: 12
     ports:
       - "127.0.0.1:5432:5432"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: "no"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:?Set MIGRATION_DATABASE_URL in .env}
+      DATABASE_SSL_MODE: ${DATABASE_SSL_MODE:-prefer}
+      PGSSLROOTCERT: ${PGSSLROOTCERT:-}
+    command: ["python", "init_db.py"]
+    depends_on:
+      db:
+        condition: service_healthy
 
   api:
     build:
@@ -24,19 +41,45 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      DATABASE_SSL_MODE: ${DATABASE_SSL_MODE:-prefer}
+      PGSSLROOTCERT: ${PGSSLROOTCERT:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
-    command:
-      - sh
-      - -c
-      - python init_db.py && exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+      AI_PROVIDER: ${AI_PROVIDER:-local_rules}
+      AI_PATIENT_DATA_ENABLED: ${AI_PATIENT_DATA_ENABLED:-false}
+      AI_EXTERNAL_CALLS_ENABLED: ${AI_EXTERNAL_CALLS_ENABLED:-false}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-12}
+      AI_MAX_RETRIES: ${AI_MAX_RETRIES:-1}
+      AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-512}
+      AI_CONTEXT_MAX_MESSAGES: ${AI_CONTEXT_MAX_MESSAGES:-12}
+      AI_CONTEXT_MAX_CHARS: ${AI_CONTEXT_MAX_CHARS:-6000}
+      AI_CONVERSATION_RETENTION_DAYS: ${AI_CONVERSATION_RETENTION_DAYS:-90}
+      AI_ANALYTICS_RETENTION_DAYS: ${AI_ANALYTICS_RETENTION_DAYS:-365}
+      OPERATOR_AUDIT_RETENTION_DAYS: ${OPERATOR_AUDIT_RETENTION_DAYS:-365}
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - doctor_uploads:/app/uploads/doctors
     ports:
       - "127.0.0.1:8000:8000"
+
+  ai-cleanup:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${CLEANUP_DATABASE_URL:?Set CLEANUP_DATABASE_URL in .env}
+      DATABASE_SSL_MODE: ${DATABASE_SSL_MODE:-prefer}
+      PGSSLROOTCERT: ${PGSSLROOTCERT:-}
+      AI_CONVERSATION_RETENTION_DAYS: ${AI_CONVERSATION_RETENTION_DAYS:-90}
+      AI_ANALYTICS_RETENTION_DAYS: ${AI_ANALYTICS_RETENTION_DAYS:-365}
+      OPERATOR_AUDIT_RETENTION_DAYS: ${OPERATOR_AUDIT_RETENTION_DAYS:-365}
+    command: ["sh", "-c", "while true; do python -m app.cleanup_ai_data; sleep 86400; done"]
+    depends_on:
+      api:
+        condition: service_healthy
 
   frontend:
     build:
