@@ -99,6 +99,19 @@ Keep `AI_PATIENT_DATA_ENABLED=false` and external AI calls disabled. Do not
 interpret configuration checks, local tests, or documentation as staging
 security evidence.
 
+## Vercel Hobby deployment preparation
+
+The repository now has a root [`vercel.json`](./vercel.json) using Vercel
+Services to route the existing Next.js and FastAPI apps under one origin, plus a
+protected daily cleanup Cron endpoint. See
+[`VERCEL_DEPLOYMENT.md`](./VERCEL_DEPLOYMENT.md) for exact Vercel project
+settings, Neon TLS and role setup, environment variables and controlled
+migration/deployment commands. This is locally prepared but has not been built
+or deployed with Vercel, and no Neon TLS handshake has been verified. Doctor
+photo uploads depend on durable storage not configured for Vercel Functions.
+Keep AI external calls and patient-data processing disabled; this does not
+authorize real patient-data use.
+
 ## Repository layout
 
 ```text
@@ -195,7 +208,7 @@ available and `.env` exists, then builds and starts the Compose services.
 containers without removing the PostgreSQL or doctor-upload volumes. To remove
 those volumes intentionally, run `docker compose down --volumes` manually.
 
-### Deploy with Render
+### Deploy with Render (legacy, not recommended)
 
 The root [`render.yaml`](./render.yaml) Blueprint defines the API, frontend,
 managed PostgreSQL database, and free-tier service plans. In Render, create a

@@ -1,5 +1,66 @@
 # MediSync AI upgrade plan
 
+## Vercel Hobby deployment preparation (2026-11-05)
+
+### Decision
+
+Prepared a single-project Vercel Services configuration for the existing
+Next.js and FastAPI applications, with same-origin routing and a protected daily
+cleanup Cron endpoint. This uses no copied application code and requires no
+database migration. Vercel Services is currently documented as Beta on all
+plans, and the Vercel Python runtime documents FastAPI/ASGI and response
+streaming. Neither Vercel nor Neon was available in this workspace, so the
+configuration is not deployment-verified. **No deploy was made.** Keep patient
+data processing and external AI disabled.
+
+### Implemented locally
+
+- Added root `vercel.json` with separate service roots, FastAPI `app.main:app`
+  entrypoint, frontend/API/health routing, and a once-daily 03:00 UTC cleanup
+  schedule. Preserved Next.js standalone output for the existing Docker image;
+  the Next config disables that output only on Vercel.
+- Added Python 3.12 selection for the backend Function and same-origin
+  production API client behavior while retaining localhost API defaults for
+  development.
+- Added an exact Vercel preview-origin allowance using the system-provided
+  deployment host. Production still requires its explicitly configured
+  `FRONTEND_URL`.
+- Added protected `/api/cron/cleanup` requiring constant-time `CRON_SECRET`
+  comparison and a distinct `CLEANUP_DATABASE_URL`. Cleanup runs with the
+  restricted cleanup role, not the API runtime role.
+- Implemented a Python TLS context for `verify-full`, using system trust roots
+  (or explicitly configured `PGSSLROOTCERT`) with hostname validation. Applied
+  this to API, cleanup, and Alembic/migration connections. Migration remains a
+  separate manually controlled release operation, never API startup/build.
+- Added backend tests for Cron authorization and database separation, TLS
+  verification settings, and exact preview-origin scoping. Updated local
+  environment examples and documented Vercel/Neon configuration and blockers.
+
+### Verification and blockers
+
+- Backend: `python -m pytest -q` — **89 passed**; Python `compileall` passed.
+- Frontend: `npm run lint`, `npm run typecheck`, and production builds passed
+  with both `VERCEL` unset (Docker standalone) and `VERCEL=1` (Vercel mode;
+  Next.js 16.4.2).
+- `vercel.json` parsed and its service roots/entrypoint were checked; `git diff
+  --check` passed. Vercel CLI, Docker CLI and `psql` are unavailable, so this
+  did not validate Vercel's build/routing or any database connection.
+- No Vercel CLI/project or Neon database credentials were available. The
+  Vercel build and Services routing, Function bundle size, real `verify-full`
+  handshake, actual Cron invocation, and cleanup-role grants remain unverified.
+- Doctor photo upload/read still uses local filesystem storage and is not durable
+  on Vercel Functions. Configure and test approved object storage before
+  depending on that admin workflow. Patient PDF upload remains disabled.
+- Confirm that the Vercel Services account/runtime isolates backend secrets from
+  frontend code. Project-level environment variables may be shared across
+  services; do not expose secrets via `NEXT_PUBLIC_*` or frontend responses.
+- Hobby Cron is daily with a broad execution window. Function limits can end
+  long SSE responses or cleanup. No staging, privacy, regulatory, clinical, or
+  production-readiness assertion is made.
+
+The reproducible project settings and commands are in
+[`VERCEL_DEPLOYMENT.md`](./VERCEL_DEPLOYMENT.md).
+
 ## Phase 7 infrastructure provisioning and staging (2026-11-05)
 
 ### Current decision

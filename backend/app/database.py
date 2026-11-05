@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import get_settings
+from app.db_tls import get_database_ssl_argument
 
 settings = get_settings()
 
@@ -34,7 +35,7 @@ def get_engine() -> AsyncEngine:
         _engine = create_async_engine(
             _normalize_database_url(settings.database_url),
             pool_pre_ping=True,
-            connect_args={"ssl": settings.database_ssl_mode},
+            connect_args={"ssl": get_database_ssl_argument(settings.database_ssl_mode, settings.pgsslrootcert)},
             # SQL echo includes bind values (which may be health information).
             # Keep it disabled in every environment; use structured, redacted logs.
             echo=False,

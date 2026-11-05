@@ -6,13 +6,19 @@ from alembic.config import Config
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from app.db_tls import get_database_ssl_argument
+
 
 async def grant_cleanup_permissions(database_url: str, ssl_mode: str, required: bool) -> None:
     if database_url.startswith(("postgres://", "postgresql://")):
         database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
         database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-    engine = create_async_engine(database_url, connect_args={"ssl": ssl_mode}, pool_pre_ping=True)
+    engine = create_async_engine(
+        database_url,
+        connect_args={"ssl": get_database_ssl_argument(ssl_mode, os.environ.get("PGSSLROOTCERT"))},
+        pool_pre_ping=True,
+    )
     try:
         async with engine.begin() as connection:
             cleanup_role_exists = await connection.scalar(

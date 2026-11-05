@@ -1,5 +1,21 @@
 # Phase 6/7 staging deployment readiness report
 
+## Vercel Hobby configuration addendum (2026-11-05)
+
+The repository has a local Vercel Services configuration for a single
+Next.js/FastAPI project, a protected daily cleanup Cron and explicit `verify-full`
+TLS contexts. These changes did not provision or contact a Vercel or Neon
+environment. Vercel deployment, bundle-size check, Neon role grants, TLS
+handshake, Cron execution, Function duration and cleanup recovery are all
+**UNVERIFIED**. No patient data or secrets were used. The deployment remains
+**NO-GO for real patient data**. Doctor photos use local filesystem storage and
+need a durable object-storage implementation before the existing admin photo
+workflow can be relied on in Vercel. See
+[`VERCEL_DEPLOYMENT.md`](./VERCEL_DEPLOYMENT.md) for setup and validation steps.
+Local checks for this configuration passed: backend 89 tests and compileall;
+frontend lint, typecheck and build; Vercel JSON parsing and diff whitespace
+check. These are not cloud execution evidence.
+
 ## Phase 7 provisioning update (2026-11-05)
 
 ### Disposition

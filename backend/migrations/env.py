@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app import models  # noqa: F401
 from app.config import get_settings
 from app.database import Base, _normalize_database_url
+from app.db_tls import get_database_ssl_argument
 
 config = context.config
 settings = get_settings()
@@ -45,6 +46,9 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={
+            "ssl": get_database_ssl_argument(settings.database_ssl_mode, settings.pgsslrootcert)
+        },
     )
 
     async with connectable.connect() as connection:

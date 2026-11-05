@@ -199,7 +199,8 @@ interface AuthResult {
   csrf_token: string;
 }
 
-const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(
+const defaultApiBaseUrl = process.env.NODE_ENV === "production" ? "" : "http://localhost:8000";
+const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? defaultApiBaseUrl).replace(
   /\/+$/,
   "",
 );

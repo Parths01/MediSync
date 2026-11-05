@@ -105,7 +105,7 @@ async def require_csrf(request: Request) -> None:
     csrf_header = request.headers.get("X-CSRF-Token", "")
     origin = request.headers.get("origin")
 
-    if origin != settings.frontend_url:
+    if origin not in settings.allowed_frontend_origins:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid request origin")
     if not csrf_cookie or not csrf_header or not hmac.compare_digest(csrf_cookie, csrf_header):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token")

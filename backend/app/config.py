@@ -19,9 +19,23 @@ class Settings(BaseSettings):
     # Database
     database_url: str
     database_ssl_mode: Literal["prefer", "require", "verify-ca", "verify-full"] = "prefer"
+    pgsslrootcert: str | None = None
+    cleanup_database_url: str | None = None
 
     # CORS
     frontend_url: str = "http://localhost:3000"
+    vercel_env: str | None = None
+    vercel_url: str | None = None
+    cron_secret: str | None = None
+
+    @property
+    def allowed_frontend_origins(self) -> list[str]:
+        origins = [self.frontend_url.rstrip("/")]
+        # Vercel gives each preview deployment its own host. Accept only that
+        # deployment's HTTPS origin; never allow a broad *.vercel.app pattern.
+        if self.vercel_env == "preview" and self.vercel_url:
+            origins.append(f"https://{self.vercel_url.removeprefix('https://').rstrip('/')}")
+        return list(dict.fromkeys(origins))
 
     # Authentication cookies
     session_cookie_name: str = "medisync_session"
@@ -54,6 +68,8 @@ class Settings(BaseSettings):
             raise ValueError("External AI calls cannot be enabled until the privacy gate is approved")
         if self.app_env.lower() in {"production", "prod"} and self.ai_patient_data_enabled:
             raise ValueError("AI patient-data processing is disabled in production pending privacy and security approval")
+        if self.cron_secret and len(self.cron_secret) < 16:
+            raise ValueError("CRON_SECRET must contain at least 16 characters")
         return self
 
 
