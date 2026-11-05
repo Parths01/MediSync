@@ -1,4 +1,6 @@
+import json
 import os
+from pathlib import Path
 from types import SimpleNamespace
 
 import httpx
@@ -7,6 +9,40 @@ import pytest
 from app import main
 from app.db_tls import get_database_ssl_argument
 import init_db
+
+
+def test_vercel_services_config_declares_both_frameworks_and_roots():
+    repository_root = Path(__file__).resolve().parents[2]
+    config = json.loads((repository_root / "vercel.json").read_text(encoding="utf-8"))
+
+    assert config["services"] == {
+        "frontend": {"root": "frontend/", "framework": "nextjs"},
+        "backend": {
+            "root": "backend/",
+            "framework": "fastapi",
+            "entrypoint": "app.main:app",
+        },
+    }
+    assert (repository_root / "frontend" / "package.json").is_file()
+    assert (repository_root / "backend" / ".python-version").is_file()
+    assert (repository_root / "backend" / "requirements.txt").is_file()
+
+
+def test_vercel_rewrites_route_api_and_health_to_backend_before_frontend_catchall():
+    repository_root = Path(__file__).resolve().parents[2]
+    config = json.loads((repository_root / "vercel.json").read_text(encoding="utf-8"))
+    rewrites = config["rewrites"]
+
+    assert [rewrite["source"] for rewrite in rewrites] == [
+        "/api",
+        "/api/(.*)",
+        "/health",
+        "/health/ready",
+        "/(.*)",
+    ]
+    assert all(rewrite["destination"] == {"service": "backend"} for rewrite in rewrites[:-1])
+    assert rewrites[-1]["destination"] == {"service": "frontend"}
+    assert config["crons"] == [{"path": "/api/cron/cleanup", "schedule": "0 3 * * *"}]
 
 
 @pytest.mark.asyncio

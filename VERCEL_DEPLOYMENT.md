@@ -5,17 +5,30 @@
 This repository is configured for one Vercel project using the Vercel Services
 model. The project root remains the repository root; Vercel builds the existing
 `frontend/` Next.js application and `backend/` FastAPI application separately.
-The top-level routes send `/api/*` and health paths to FastAPI and all other
-paths to Next.js. The browser therefore uses one origin for API calls, cookies,
-CSRF and SSE, without copying either application into another directory.
+Both service frameworks are pinned in the root `vercel.json` so detection does
+not depend on scanning the repository root. The top-level routes send `/api`,
+`/api/*` and health paths to FastAPI and all other paths to Next.js. The browser
+therefore uses one origin for API calls, cookies, CSRF and SSE, without copying
+either application into another directory.
+
+Vercel Services is one project containing multiple services. Seeing **Import
+single project** is expected and does not mean the frontend is omitted. During
+import, keep the project root at `./` and set the project framework/preset to
+**Services**. Vercel requires both that project-level selection and the root
+`services` block. The import wizard may still summarize one project rather than
+list two separately importable projects; after import, check the deployment
+build logs for independent `frontend` and `backend` service builds. A dashboard
+import/build was not run for this repository, so account-side recognition still
+needs confirmation before any deployment.
 
 Vercel currently documents Services as Beta on all plans. The Python runtime
-supports FastAPI/ASGI and streamed responses, but Vercel Services and this
-repository have not been deployed or built with the Vercel CLI here. Check that
-Services is available to the target account before proceeding. Hobby Cron is
-limited to one run per day with minute-level scheduling variance; the configured
-schedule is 03:00 UTC. These platform capabilities do not constitute a deployment
-or security verification.
+supports FastAPI/ASGI and streamed responses. This repository has not been
+deployed. Vercel CLI local mode detected both services, but its Windows build
+runner could not create cache symlinks (EPERM), so routed local HTTP verification
+did not complete. Check Services availability on the target account before
+proceeding. Hobby Cron is limited to one run per day with minute-level scheduling
+variance; the configured schedule is 03:00 UTC. These platform capabilities do
+not constitute a deployment or security verification.
 
 The backend uses Python 3.12 in `backend/.python-version`. Vercel's Python
 function bundle limit and the resulting dependency bundle must be validated by
@@ -30,9 +43,9 @@ its SSE transport does not imply token streaming.
    repository root). Do not point the project at `frontend/`; the root
    `vercel.json` declares both services.
 2. Use the current **Services** configuration with the Next.js service rooted
-   at `frontend/` and FastAPI service at `backend/`. Vercel should detect Next.js
-   and Python from the package metadata/`requirements.txt`; the backend entrypoint
-   is `app.main:app`.
+   at `frontend/` (`framework: nextjs`) and FastAPI service at `backend/`
+   (`framework: fastapi`, entrypoint `app.main:app`). The entrypoint is relative
+   to the backend service root and resolves to `backend/app/main.py`.
 3. Keep the project framework/build settings at their detected defaults. Do not
    set a project-wide build command or output directory. The frontend service
    builds with its existing `frontend/package.json`; the backend service uses
@@ -82,12 +95,16 @@ local development. `NEXT_PUBLIC_API_URL` is public build-time configuration and
 must never contain credentials. Do **not** configure `MIGRATION_DATABASE_URL`
 in the Vercel project: only the controlled migration operator/job receives it.
 
-The database URL may contain Neon's documented `sslmode=require` query value;
+The Neon URLs include libpq-style `sslmode` and `channel_binding` query values;
+the SQLAlchemy asyncpg URL normalizer removes those unsupported parameters and
 the application explicitly supplies a TLS context that requires trusted-chain
 and hostname validation (`verify-full`). Set `DATABASE_SSL_MODE=verify-full` in
 both production and preview. With no explicit CA file, Python uses the host
-system CA trust store. A TLS handshake, positive/negative hostname test, and
-`pg_stat_ssl` check against the actual Neon branch are required before use.
+system CA trust store. A client-side TLS 1.3 handshake was verified against the
+configured Neon pooled and direct URLs. Negative hostname/CA tests have not been
+run. The Neon-side `pg_stat_ssl` query reported false for the proxied backend
+session, so it was not treated as TLS evidence. Repeat client handshake checks
+from the Vercel runtime before deployment.
 
 The three Neon roles are distinct. Use a Neon owner/admin connection only for
 initial role provisioning and the controlled migration operation. Provision
@@ -95,8 +112,10 @@ initial role provisioning and the controlled migration operation. Provision
 `backend/db-init/00-create-roles.sql` as a DBA-reviewed starting point; assign
 separate passwords interactively, set LOGIN, and verify grants on the actual
 Neon database. `init_db.py` applies only the defined cleanup grants after
-migrations. Existing database ownership/grants must be reviewed; never assume
-the Compose bootstrap script has provisioned Neon.
+migrations. The current Neon branch roles and grants are recorded in
+[`NEON_SETUP.md`](./NEON_SETUP.md); apply and verify the same least-privilege
+design separately for every new branch/environment. Never assume the Compose
+bootstrap script has provisioned Neon.
 
 ## Controlled migration and deployment commands
 
@@ -146,26 +165,32 @@ or `CLEANUP_DATABASE_URL` is absent. It creates an async engine with
 `DATABASE_SSL_MODE` verification and the separate cleanup role; it does not use
 the API runtime role to delete data. Vercel sends `CRON_SECRET` in the
 authorization header for configured Cron jobs. The cleanup is transactional and
-idempotent for expired rows, but actual function timeout behavior, Cron delivery,
-and cleanup grants have not been tested on Vercel/Neon.
+idempotent for expired rows. Neon cleanup-role grants were verified, but actual
+Vercel function timeout behavior and Cron delivery have not been tested.
 
 ## Known blockers and security limits
 
 ### Local verification completed
 
-- Backend: `python -m pytest -q` — **89 passed**; Python `compileall` passed.
+- Backend: `python -m pytest -q` — **92 passed**; Python `compileall` passed.
 - Frontend: `npm run lint`, `npm run typecheck`, and `npm run build` passed.
   Production build passed both with `VERCEL` unset (existing Docker standalone
   mode) and with `VERCEL=1` (Vercel Next runtime mode).
-- The Vercel configuration parses as JSON and was structurally reviewed;
-  `git diff --check` passed.
-- Vercel CLI, Docker CLI, `psql`, Vercel credentials and Neon credentials were
-  unavailable. No Vercel build, preview, Neon connection, TLS handshake, or
-  remote Cron run was executed.
+- The `vercel.json` instance passed evaluation against the current published
+  Vercel schema using Ajv. The schema declares draft-04 but contains newer
+  schema keywords, so Ajv's meta-schema self-validation was disabled while
+  validating the config instance. Vercel CLI 65.11.0 local mode detected both
+  `frontend` (`Next.js`) and `backend` (`FastAPI`) from the repository root.
+- The Vercel CLI could not continue to its local build because its Windows cache
+  setup attempted to create symlinks and failed with `EPERM`. Therefore local
+  routed HTTP checks, an account dashboard import, a Vercel build, preview, and
+  remote Cron run remain unverified. Docker CLI, `psql`, and Vercel account
+  credentials were not used. Neon connectivity, client TLS, roles, and
+  migrations were verified separately as recorded in `NEON_SETUP.md`.
 
-- No Vercel project, Vercel CLI build, Neon branch, role, credential, or TLS
-  handshake was available. This is configuration preparation, not verified
-  Vercel compatibility or a production deployment.
+- No Vercel project/build was created or deployed. Local CLI detection verifies
+  that both service manifests are recognized, but does not establish cloud
+  build, dashboard import, or production compatibility.
 - Doctor photo uploads and reads use the API's local filesystem at
   `uploads/doctors`. Vercel Function files are not durable writable storage, so
   existing admin photo upload/persistence is not supported by this configuration.

@@ -18,3 +18,5 @@
 
 /uploads/doctors/*
 !/uploads/doctors/.gitkeep
+.neon
+node_modules/

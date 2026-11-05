@@ -1,5 +1,25 @@
 # MediSync AI upgrade plan
 
+## Neon database setup (2026-11-05)
+
+The requested Neon project and `production` branch are linked. `neon deploy`
+reported no changes to apply and pulled pooled/direct Postgres URLs into the
+ignored root `.env.local`. Neon Postgres is used through the existing async
+SQLAlchemy/asyncpg stack; no Neon Auth, Data API, Function, Storage, or AI Gateway
+was enabled. Three generated non-superuser roles now separate API runtime,
+direct migrations, and cleanup. Their connection URLs are stored only in ignored
+`backend/.env.neon`. Existing Alembic migrations were applied on the empty
+branch through `0008_operator_audit` using production validation and the direct
+TLS-verified migration URL.
+
+Actual pooled and direct connections completed TLS 1.3 handshakes under the
+`verify-full` SSL context. Role privilege checks and the runtime API health and
+doctor-list flows passed. Backend tests passed (90); frontend lint, typecheck,
+and Vercel-mode build passed. See [`NEON_SETUP.md`](./NEON_SETUP.md) for exact
+evidence and local commands. No Vercel project was deployed/configured. AI
+external calls and patient-data processing remain disabled; this does not
+authorize real patient-data use.
+
 ## Vercel Hobby deployment preparation (2026-11-05)
 
 ### Decision

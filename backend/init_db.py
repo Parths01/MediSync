@@ -7,12 +7,11 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.db_tls import get_database_ssl_argument
+from app.db_urls import normalize_asyncpg_url
 
 
 async def grant_cleanup_permissions(database_url: str, ssl_mode: str, required: bool) -> None:
-    if database_url.startswith(("postgres://", "postgresql://")):
-        database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
-        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    database_url = normalize_asyncpg_url(database_url)
 
     engine = create_async_engine(
         database_url,

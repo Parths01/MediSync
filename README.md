@@ -86,18 +86,18 @@ as durable patient-scoped storage.
 
 ## Phase 6 deployment readiness
 
-The Phase 6 review is **NO-GO for real patient data**. Local backend and frontend
-checks passed, but no staging account, Docker engine, staging PostgreSQL client
-access, verified-TLS endpoint, encrypted backup service, separate audit sink, or
-monitoring/alert destination was available. Compose runtime behavior, TLS
-`verify-full`, least-privilege DB grants, backup restoration, restart/outage
-recovery, and alert delivery are therefore unverified. See
+The Phase 6 review remains **NO-GO for real patient data**. Since that review,
+the Neon `production` branch was configured with separate non-superuser roles,
+existing migrations through `0008_operator_audit`, and a verified client TLS
+connection. No Vercel deployment, encrypted backup service, separate audit sink,
+monitoring/alert destination, Compose E2E, backup restore, restart/outage
+recovery, or alert delivery has been verified. See
 [PHASE6_DEPLOYMENT_READINESS.md](./PHASE6_DEPLOYMENT_READINESS.md) for evidence,
 deployment blockers, and reproducible staging verification commands.
 
-Keep `AI_PATIENT_DATA_ENABLED=false` and external AI calls disabled. Do not
-interpret configuration checks, local tests, or documentation as staging
-security evidence.
+Keep `AI_PATIENT_DATA_ENABLED=false` and external AI calls disabled. The Neon
+TLS and role checks are database-connection evidence only; they do not establish
+application deployment or production readiness.
 
 ## Vercel Hobby deployment preparation
 
@@ -107,10 +107,17 @@ protected daily cleanup Cron endpoint. See
 [`VERCEL_DEPLOYMENT.md`](./VERCEL_DEPLOYMENT.md) for exact Vercel project
 settings, Neon TLS and role setup, environment variables and controlled
 migration/deployment commands. This is locally prepared but has not been built
-or deployed with Vercel, and no Neon TLS handshake has been verified. Doctor
+or deployed with Vercel. Neon client TLS was verified separately; Vercel-to-Neon
+connectivity remains untested. Doctor
 photo uploads depend on durable storage not configured for Vercel Functions.
 Keep AI external calls and patient-data processing disabled; this does not
 authorize real patient-data use.
+
+The Neon project, PostgreSQL roles, and existing Alembic schema are configured
+for local testing. See [`NEON_SETUP.md`](./NEON_SETUP.md) for role separation,
+TLS verification, local run commands, and recorded checks. The Neon owner URL is
+kept only in the ignored root `.env.local`; the app runtime uses its separate
+least-privilege role.
 
 ## Repository layout
 

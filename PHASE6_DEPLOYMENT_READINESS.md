@@ -3,16 +3,17 @@
 ## Vercel Hobby configuration addendum (2026-11-05)
 
 The repository has a local Vercel Services configuration for a single
-Next.js/FastAPI project, a protected daily cleanup Cron and explicit `verify-full`
-TLS contexts. These changes did not provision or contact a Vercel or Neon
-environment. Vercel deployment, bundle-size check, Neon role grants, TLS
-handshake, Cron execution, Function duration and cleanup recovery are all
-**UNVERIFIED**. No patient data or secrets were used. The deployment remains
-**NO-GO for real patient data**. Doctor photos use local filesystem storage and
-need a durable object-storage implementation before the existing admin photo
-workflow can be relied on in Vercel. See
+Next.js/FastAPI project and a protected daily cleanup Cron. Since this report was
+first written, the specified Neon branch has been configured: least-privilege
+roles, Alembic head `0008_operator_audit`, and pooled/direct client TLS 1.3
+connections were verified. Vercel deployment, bundle-size check, Vercel-to-Neon
+TLS, Cron execution, Function duration and recovery remain **UNVERIFIED**. No
+patient data was used. The deployment remains **NO-GO for real patient data**.
+Doctor photos use local filesystem storage and need durable object storage before
+the existing admin photo workflow can be relied on in Vercel. See
 [`VERCEL_DEPLOYMENT.md`](./VERCEL_DEPLOYMENT.md) for setup and validation steps.
-Local checks for this configuration passed: backend 89 tests and compileall;
+See [`NEON_SETUP.md`](./NEON_SETUP.md) for Neon role, migration, and client TLS
+evidence. Local checks for this configuration passed: backend 90 tests and compileall;
 frontend lint, typecheck and build; Vercel JSON parsing and diff whitespace
 check. These are not cloud execution evidence.
 
