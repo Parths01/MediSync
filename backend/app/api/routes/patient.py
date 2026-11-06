@@ -1,3 +1,5 @@
+from datetime import timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -15,6 +17,7 @@ from app.models import (
 )
 from app.schemas import UserResponse
 from app.schemas.patient import (
+    AppointmentAvailabilityDay,
     AppointmentCreate,
     AppointmentView,
     FeedbackCreate,
@@ -33,6 +36,12 @@ from app.security import (
     require_csrf,
     require_session_cookie,
     verify_password_and_update,
+)
+from app.services.appointment_slots import (
+    APPOINTMENT_TIMEZONE,
+    BOOKING_WINDOW_DAYS,
+    SLOT_MINUTES,
+    scheduled_slots,
 )
 from app.services.symptom_recommender import recommend_specialties
 
@@ -107,6 +116,54 @@ async def list_appointments(
     return [_appointment_view(appointment, doctor) for appointment, doctor in result.all()]
 
 
+@router.get(
+    "/doctors/{doctor_id}/availability",
+    response_model=list[AppointmentAvailabilityDay],
+)
+async def get_doctor_availability(
+    doctor_id: int,
+    db: AsyncSession = Depends(get_db),
+    _user: User = Depends(get_current_user),
+) -> list[AppointmentAvailabilityDay]:
+    doctor = await db.get(Doctor, doctor_id)
+    if doctor is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
+
+    slots_by_date = scheduled_slots(days=BOOKING_WINDOW_DAYS)
+    all_slots = [slot for slots in slots_by_date.values() for slot in slots]
+    if not all_slots:
+        return []
+
+    window_start = min(all_slots).astimezone(timezone.utc)
+    window_end = (max(all_slots) + timedelta(minutes=SLOT_MINUTES)).astimezone(timezone.utc)
+    result = await db.execute(
+        select(Appointment.appointment_date).where(
+            Appointment.doctor_id == doctor_id,
+            Appointment.status.in_(("pending", "confirmed")),
+            Appointment.appointment_date >= window_start,
+            Appointment.appointment_date < window_end,
+        )
+    )
+    booked_starts = [value.astimezone(APPOINTMENT_TIMEZONE) for value in result.scalars()]
+
+    available_days: list[AppointmentAvailabilityDay] = []
+    for clinic_date, slots in slots_by_date.items():
+        available_times = [
+            slot.strftime("%H:%M")
+            for slot in slots
+            if not any(
+                booked < slot + timedelta(minutes=SLOT_MINUTES)
+                and booked + timedelta(minutes=SLOT_MINUTES) > slot
+                for booked in booked_starts
+            )
+        ]
+        if available_times:
+            available_days.append(
+                AppointmentAvailabilityDay(date=clinic_date, slots=available_times)
+            )
+    return available_days
+
+
 @router.post(
     "/appointments",
     response_model=AppointmentView,
@@ -120,6 +177,29 @@ async def book_appointment(
     doctor = await db.get(Doctor, payload.doctor_id)
     if doctor is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
+
+    requested_start = payload.appointment_date.astimezone(APPOINTMENT_TIMEZONE)
+    overlapping_result = await db.execute(
+        select(Appointment.appointment_date).where(
+            Appointment.doctor_id == doctor.doctor_id,
+            Appointment.status.in_(("pending", "confirmed")),
+            Appointment.appointment_date
+            >= (requested_start - timedelta(minutes=SLOT_MINUTES)).astimezone(timezone.utc),
+            Appointment.appointment_date
+            < (requested_start + timedelta(minutes=SLOT_MINUTES)).astimezone(timezone.utc),
+        )
+    )
+    if any(
+        booked.astimezone(APPOINTMENT_TIMEZONE)
+        < requested_start + timedelta(minutes=SLOT_MINUTES)
+        and booked.astimezone(APPOINTMENT_TIMEZONE) + timedelta(minutes=SLOT_MINUTES)
+        > requested_start
+        for booked in overlapping_result.scalars()
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That appointment time is unavailable. Choose another time.",
+        )
 
     appointment = Appointment(
         user_id=user.user_id,

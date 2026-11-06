@@ -1,9 +1,10 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.doctor import DoctorResponse
+from app.services.appointment_slots import is_scheduled_slot
 
 
 AppointmentStatus = Literal["pending", "confirmed", "completed", "rejected", "cancelled"]
@@ -27,9 +28,17 @@ class AppointmentCreate(BaseModel):
     def validate_appointment_date(self) -> "AppointmentCreate":
         if self.appointment_date.tzinfo is None or self.appointment_date.utcoffset() is None:
             raise ValueError("Appointment date must include a timezone")
-        if self.appointment_date.astimezone(timezone.utc) <= datetime.now(timezone.utc):
-            raise ValueError("Appointment date must be in the future")
+        if not is_scheduled_slot(self.appointment_date):
+            raise ValueError(
+                "Choose an available half-hour slot from the next 30 days, "
+                "Monday through Saturday between 9:00 AM and 4:30 PM India time."
+            )
         return self
+
+
+class AppointmentAvailabilityDay(BaseModel):
+    date: date
+    slots: list[str]
 
 
 class AppointmentView(BaseModel):

@@ -42,6 +42,11 @@ export interface Appointment {
   patient_name: string | null;
 }
 
+export interface AppointmentAvailabilityDay {
+  date: string;
+  slots: string[];
+}
+
 export interface MedicalHistory {
   history_id: number;
   diagnosis: string;
@@ -336,6 +341,16 @@ export function getMyAppointments(
   offset = 0,
 ): Promise<Appointment[]> {
   return apiRequest<Appointment[]>(`/patient/appointments?limit=${limit}&offset=${offset}`, { signal });
+}
+
+export function getAppointmentAvailability(
+  doctorId: number,
+  signal?: AbortSignal,
+): Promise<AppointmentAvailabilityDay[]> {
+  return apiRequest<AppointmentAvailabilityDay[]>(
+    `/patient/doctors/${doctorId}/availability`,
+    { signal },
+  );
 }
 
 export function bookAppointment(payload: {
