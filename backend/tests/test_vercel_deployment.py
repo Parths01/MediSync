@@ -123,11 +123,42 @@ def test_preview_origin_is_scoped_to_exact_vercel_deployment():
         frontend_url="https://medisync.example",
         vercel_env="preview",
         vercel_url="medisync-git-feature-example.vercel.app",
+        vercel_project_production_url="medisync.example",
     )
     assert settings.allowed_frontend_origins == [
         "https://medisync.example",
         "https://medisync-git-feature-example.vercel.app",
     ]
+
+
+def test_production_origin_uses_exact_vercel_project_domain_and_drops_localhost_default():
+    from app.config import Settings
+
+    settings = Settings(
+        database_url="postgresql+asyncpg://test:test@localhost/db",
+        database_ssl_mode="verify-full",
+        app_env="production",
+        session_cookie_secure=True,
+        vercel_env="production",
+        vercel_project_production_url="backend-bay-theta-11.vercel.app",
+    )
+    assert settings.allowed_frontend_origins == [
+        "https://backend-bay-theta-11.vercel.app",
+    ]
+
+
+def test_production_does_not_allow_wildcard_vercel_domain():
+    from app.config import Settings
+
+    settings = Settings(
+        database_url="postgresql+asyncpg://test:test@localhost/db",
+        database_ssl_mode="verify-full",
+        app_env="production",
+        session_cookie_secure=True,
+        vercel_env="production",
+        vercel_project_production_url="*.vercel.app",
+    )
+    assert settings.allowed_frontend_origins == []
 
 
 def test_migration_command_uses_distinct_migration_url_and_restores_runtime_url(monkeypatch):

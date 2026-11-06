@@ -50,10 +50,11 @@ its SSE transport does not imply token streaming.
    set a project-wide build command or output directory. The frontend service
    builds with its existing `frontend/package.json`; the backend service uses
    `backend/requirements.txt` and `.python-version`.
-4. Assign a stable HTTPS production domain. Set `FRONTEND_URL` to that exact
-   origin (scheme and host, no path or trailing slash). Preview origins are
-   limited to the exact host Vercel supplies as `VERCEL_URL`; broad `*.vercel.app`
-   origins are not allowed.
+4. Assign a stable HTTPS production domain. Enable Vercel system environment
+   variables so the backend can use `VERCEL_PROJECT_PRODUCTION_URL` as its exact
+   production origin. Set `FRONTEND_URL` to the exact HTTPS origin when using a
+   separate/custom frontend host. Preview origins are limited to the exact host
+   Vercel supplies as `VERCEL_URL`; broad `*.vercel.app` origins are not allowed.
 5. Configure Production and Preview environment variables separately. Preview
    must use a dedicated synthetic-data Neon branch and distinct credentials; do
    not point previews at a production database.
@@ -82,7 +83,7 @@ values or paste them into logs.
 | `DATABASE_SSL_MODE` | `verify-full` | `verify-full` |
 | `PGSSLROOTCERT` | Unset for a publicly trusted Neon certificate; configure only when an approved CA bundle is shipped and validated | Same rule |
 | `SESSION_COOKIE_SECURE` | `true` | `true` |
-| `FRONTEND_URL` | Exact production HTTPS origin | Safe stable origin; the exact preview origin is additionally derived from Vercel's `VERCEL_URL` |
+| `FRONTEND_URL` | Exact production HTTPS origin when using a separate/custom frontend host; otherwise Vercel's `VERCEL_PROJECT_PRODUCTION_URL` is used | Stable HTTPS origin; the exact preview origin is additionally derived from Vercel's `VERCEL_URL` |
 | `CLEANUP_DATABASE_URL` | Neon pooled connection URL for the restricted `medisync_cleanup` role | Restricted cleanup role on the synthetic-data branch |
 | `CRON_SECRET` | Random header-safe value, at least 16 characters | Separate random value; Vercel Cron only invokes production |
 | `AI_PROVIDER` | `local_rules` | `local_rules` |
@@ -94,6 +95,12 @@ frontend uses relative API paths in production and `http://localhost:8000` in
 local development. `NEXT_PUBLIC_API_URL` is public build-time configuration and
 must never contain credentials. Do **not** configure `MIGRATION_DATABASE_URL`
 in the Vercel project: only the controlled migration operator/job receives it.
+In Project Settings → Environment Variables, enable **Automatically expose
+System Environment Variables**. Production CSRF validation allows the exact
+HTTPS host from `VERCEL_PROJECT_PRODUCTION_URL` and any explicitly configured
+HTTPS `FRONTEND_URL`; it drops the local HTTP default in production. Preview
+CSRF validation allows only the exact deployment host from `VERCEL_URL` plus
+the configured stable frontend origin.
 
 The Neon URLs include libpq-style `sslmode` and `channel_binding` query values;
 the SQLAlchemy asyncpg URL normalizer removes those unsupported parameters and

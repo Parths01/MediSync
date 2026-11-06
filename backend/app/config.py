@@ -3,8 +3,8 @@ backend/app/config.py
 Centralised settings loaded from environment / .env file.
 """
 from functools import lru_cache
-
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -26,11 +26,43 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     vercel_env: str | None = None
     vercel_url: str | None = None
+    vercel_project_production_url: str | None = None
     cron_secret: str | None = None
 
     @property
     def allowed_frontend_origins(self) -> list[str]:
-        origins = [self.frontend_url.rstrip("/")]
+        is_production = self.app_env.lower() in {"production", "prod"}
+        frontend_origin = self.frontend_url.rstrip("/")
+        # Never keep the local HTTP default in a production allowlist. If the
+        # operator has not set FRONTEND_URL, Vercel's exact project domain
+        # below can still provide the production origin.
+        origins = []
+        if not is_production or frontend_origin.startswith("https://"):
+            origins.append(frontend_origin)
+
+        # Vercel exposes this trusted system variable at runtime when system
+        # environment variables are enabled. Add only its exact HTTPS host;
+        # never infer or allow a wildcard Vercel origin.
+        if (
+            is_production
+            and self.vercel_env == "production"
+            and self.vercel_project_production_url
+        ):
+            domain = self.vercel_project_production_url.strip()
+            candidate = domain if "://" in domain else f"https://{domain}"
+            parsed = urlsplit(candidate)
+            if (
+                parsed.scheme == "https"
+                and parsed.hostname
+                and "*" not in parsed.hostname
+                and parsed.username is None
+                and parsed.password is None
+                and parsed.path in {"", "/"}
+                and not parsed.query
+                and not parsed.fragment
+            ):
+                origins.append(f"https://{parsed.netloc.lower()}")
+
         # Vercel gives each preview deployment its own host. Accept only that
         # deployment's HTTPS origin; never allow a broad *.vercel.app pattern.
         if self.vercel_env == "preview" and self.vercel_url:
